@@ -18,6 +18,7 @@ import imageio_ffmpeg
 MAX_VIDEO_BYTES = 10 * 1024 * 1024
 MAX_POSTER_BYTES = 500 * 1024
 MAX_ASSET_BYTES = 100 * 1024 * 1024
+MAX_SVG_BYTES = 250 * 1024
 
 
 @dataclass(frozen=True)
@@ -312,6 +313,134 @@ def export_gradcam_assets(notebook_path: Path, out_dir: Path) -> None:
     export_gradcam_montage(pngs[15], out_dir / "scorecam-shallow-layer.jpg")
 
 
+def write_svg(path: Path, content: str) -> None:
+    path.write_text(content.strip() + "\n", encoding="utf-8")
+    print(f"svg {path.name}: {path.stat().st_size / 1024:.0f} KiB")
+
+
+def export_training_diagrams(out_dir: Path) -> None:
+    training_pipeline_svg = """\
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="360" viewBox="0 0 1120 360" role="img" aria-labelledby="title desc">
+  <title id="title">Training pipeline for the Forza image-to-steering model</title>
+  <desc id="desc">A deterministic diagram showing data collection, filtering, crop, augmentation, balanced sampling, MobileNetV3-Small, and steering loss.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L8,3 z" fill="#4b5563"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 25px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 15px Arial, sans-serif; fill: #4b5563; }
+      .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 8; }
+      .box-accent { fill: #ecfeff; stroke: #0891b2; stroke-width: 2; rx: 8; }
+      .box-warm { fill: #fff7ed; stroke: #ea580c; stroke-width: 2; rx: 8; }
+      .label { font: 700 15px Arial, sans-serif; fill: #111827; }
+      .small { font: 13px Arial, sans-serif; fill: #475569; }
+      .metric { font: 700 13px Arial, sans-serif; fill: #0f766e; }
+      .arrow { stroke: #4b5563; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="1120" height="360" rx="14"/>
+  <text class="title" x="40" y="48">Training Pipeline</text>
+  <text class="subtitle" x="40" y="74">Forza gameplay turns into a steering-supervised visual controller, with augmentation and resampling to reduce straight-driving bias.</text>
+
+  <rect class="box" x="40" y="118" width="135" height="116"/>
+  <text class="label" x="60" y="148">Collect</text>
+  <text class="small" x="60" y="174">8 sessions</text>
+  <text class="small" x="60" y="196">screen + UDP</text>
+  <text class="metric" x="60" y="218">96,182 rows</text>
+
+  <path class="arrow" d="M180 176 H218"/>
+  <rect class="box" x="225" y="118" width="135" height="116"/>
+  <text class="label" x="245" y="148">Filter</text>
+  <text class="small" x="245" y="174">Speed &gt; 0</text>
+  <text class="small" x="245" y="196">valid rows only</text>
+  <text class="metric" x="245" y="218">72,942 rows</text>
+
+  <path class="arrow" d="M365 176 H403"/>
+  <rect class="box" x="410" y="118" width="135" height="116"/>
+  <text class="label" x="430" y="148">Preprocess</text>
+  <text class="small" x="430" y="174">EMA alpha 0.70</text>
+  <text class="small" x="430" y="196">crop road band</text>
+  <text class="metric" x="430" y="218">(0,75,320,122)</text>
+
+  <path class="arrow" d="M550 176 H588"/>
+  <rect class="box-accent" x="595" y="118" width="135" height="116"/>
+  <text class="label" x="615" y="148">Augment</text>
+  <text class="small" x="615" y="174">flip + steer sign</text>
+  <text class="small" x="615" y="196">color, affine</text>
+  <text class="small" x="615" y="218">noise + erasing</text>
+
+  <path class="arrow" d="M735 176 H773"/>
+  <rect class="box-warm" x="780" y="118" width="135" height="116"/>
+  <text class="label" x="800" y="148">Resample</text>
+  <text class="small" x="800" y="174">&gt; 3 std actions</text>
+  <text class="small" x="800" y="196">512 / 1024 batch</text>
+  <text class="metric" x="800" y="218">rare rows boosted</text>
+
+  <path class="arrow" d="M920 176 H958"/>
+  <rect class="box" x="965" y="118" width="115" height="116"/>
+  <text class="label" x="985" y="148">Train</text>
+  <text class="small" x="985" y="174">MobileNetV3</text>
+  <text class="small" x="985" y="196">AdamW + cosine</text>
+  <text class="metric" x="985" y="218">steering loss</text>
+
+  <rect class="box" x="225" y="270" width="690" height="48"/>
+  <text class="small" x="248" y="300">90/10 train-validation split, ImageNet normalization, early stopping, best checkpoint saved as best_model.pth.</text>
+</svg>"""
+
+    resampling_balance_svg = """\
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="360" viewBox="0 0 960 360" role="img" aria-labelledby="title desc">
+  <title id="title">Resampling reduces straight-driving bias</title>
+  <desc id="desc">A bar chart comparing rare high-steering action rows in the raw train split with their share in a balanced training batch.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 25px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 15px Arial, sans-serif; fill: #4b5563; }
+      .axis { stroke: #94a3b8; stroke-width: 2; }
+      .label { font: 700 16px Arial, sans-serif; fill: #111827; }
+      .small { font: 13px Arial, sans-serif; fill: #475569; }
+      .pct { font: 700 22px Arial, sans-serif; fill: #0f766e; }
+      .common { fill: #cbd5e1; }
+      .rare { fill: #f97316; }
+      .batch { fill: #06b6d4; }
+      .legend { font: 13px Arial, sans-serif; fill: #334155; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="960" height="360" rx="14"/>
+  <text class="title" x="44" y="48">Resampling Strategy</text>
+  <text class="subtitle" x="44" y="74">Most driving frames are straight or low-steering. Each training batch deliberately contains many high-action examples.</text>
+
+  <line class="axis" x1="110" y1="282" x2="850" y2="282"/>
+  <line class="axis" x1="110" y1="110" x2="110" y2="282"/>
+
+  <text class="label" x="168" y="312">Raw train split</text>
+  <text class="small" x="168" y="332">5,060 / 65,648 rows over 3 std</text>
+  <rect class="common" x="190" y="128" width="170" height="154" rx="8"/>
+  <rect class="rare" x="190" y="269" width="170" height="13" rx="4"/>
+  <text class="pct" x="242" y="116">7.7%</text>
+  <text class="small" x="210" y="158">common steering</text>
+  <text class="small" x="215" y="263">rare action rows</text>
+
+  <text class="label" x="568" y="312">Training batch</text>
+  <text class="small" x="568" y="332">512 / 1024 rows sampled from outliers</text>
+  <rect class="common" x="590" y="128" width="170" height="154" rx="8"/>
+  <rect class="batch" x="590" y="205" width="170" height="77" rx="8"/>
+  <text class="pct" x="640" y="116">50%</text>
+  <text class="small" x="608" y="158">regular rows</text>
+  <text class="small" x="612" y="250">rare-action rows</text>
+
+  <rect class="rare" x="112" y="42" width="14" height="14" rx="3"/>
+  <text class="legend" x="134" y="54">Raw rare-action share</text>
+  <rect class="batch" x="290" y="42" width="14" height="14" rx="3"/>
+  <text class="legend" x="312" y="54">Batch rare-action share</text>
+</svg>"""
+
+    write_svg(out_dir / "training-pipeline.svg", training_pipeline_svg)
+    write_svg(out_dir / "resampling-balance.svg", resampling_balance_svg)
+
+
 def assert_asset_sizes(paths: Iterable[Path]) -> None:
     for path in paths:
         if not path.is_file():
@@ -323,6 +452,8 @@ def assert_asset_sizes(paths: Iterable[Path]) -> None:
             raise RuntimeError(f"{path} is larger than the README video budget")
         if path.name.endswith("-poster.jpg") and size > MAX_POSTER_BYTES:
             raise RuntimeError(f"{path} is larger than the poster budget")
+        if path.suffix.lower() == ".svg" and size > MAX_SVG_BYTES:
+            raise RuntimeError(f"{path} is larger than the SVG budget")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -349,6 +480,7 @@ def main() -> int:
         export_clips(args.source_dir, args.out_dir, tail_trim_s=max(1.0, args.tail_trim_s))
     if not args.skip_gradcam:
         export_gradcam_assets(args.notebook, args.out_dir)
+    export_training_diagrams(args.out_dir)
 
     assert_asset_sizes(args.out_dir.rglob("*"))
     print(f"done: {args.out_dir}")

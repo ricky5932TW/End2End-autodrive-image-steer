@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="360" viewBox="0 0 1120 360" role="img" aria-labelledby="title desc">
+  <title id="title">Training pipeline for the Forza image-to-steering model</title>
+  <desc id="desc">A deterministic diagram showing data collection, filtering, crop, augmentation, balanced sampling, MobileNetV3-Small, and steering loss.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L8,3 z" fill="#4b5563"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 25px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 15px Arial, sans-serif; fill: #4b5563; }
+      .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 8; }
+      .box-accent { fill: #ecfeff; stroke: #0891b2; stroke-width: 2; rx: 8; }
+      .box-warm { fill: #fff7ed; stroke: #ea580c; stroke-width: 2; rx: 8; }
+      .label { font: 700 15px Arial, sans-serif; fill: #111827; }
+      .small { font: 13px Arial, sans-serif; fill: #475569; }
+      .metric { font: 700 13px Arial, sans-serif; fill: #0f766e; }
+      .arrow { stroke: #4b5563; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="1120" height="360" rx="14"/>
+  <text class="title" x="40" y="48">Training Pipeline</text>
+  <text class="subtitle" x="40" y="74">Forza gameplay turns into a steering-supervised visual controller, with augmentation and resampling to reduce straight-driving bias.</text>
+
+  <rect class="box" x="40" y="118" width="135" height="116"/>
+  <text class="label" x="60" y="148">Collect</text>
+  <text class="small" x="60" y="174">8 sessions</text>
+  <text class="small" x="60" y="196">screen + UDP</text>
+  <text class="metric" x="60" y="218">96,182 rows</text>
+
+  <path class="arrow" d="M180 176 H218"/>
+  <rect class="box" x="225" y="118" width="135" height="116"/>
+  <text class="label" x="245" y="148">Filter</text>
+  <text class="small" x="245" y="174">Speed &gt; 0</text>
+  <text class="small" x="245" y="196">valid rows only</text>
+  <text class="metric" x="245" y="218">72,942 rows</text>
+
+  <path class="arrow" d="M365 176 H403"/>
+  <rect class="box" x="410" y="118" width="135" height="116"/>
+  <text class="label" x="430" y="148">Preprocess</text>
+  <text class="small" x="430" y="174">EMA alpha 0.70</text>
+  <text class="small" x="430" y="196">crop road band</text>
+  <text class="metric" x="430" y="218">(0,75,320,122)</text>
+
+  <path class="arrow" d="M550 176 H588"/>
+  <rect class="box-accent" x="595" y="118" width="135" height="116"/>
+  <text class="label" x="615" y="148">Augment</text>
+  <text class="small" x="615" y="174">flip + steer sign</text>
+  <text class="small" x="615" y="196">color, affine</text>
+  <text class="small" x="615" y="218">noise + erasing</text>
+
+  <path class="arrow" d="M735 176 H773"/>
+  <rect class="box-warm" x="780" y="118" width="135" height="116"/>
+  <text class="label" x="800" y="148">Resample</text>
+  <text class="small" x="800" y="174">&gt; 3 std actions</text>
+  <text class="small" x="800" y="196">512 / 1024 batch</text>
+  <text class="metric" x="800" y="218">rare rows boosted</text>
+
+  <path class="arrow" d="M920 176 H958"/>
+  <rect class="box" x="965" y="118" width="115" height="116"/>
+  <text class="label" x="985" y="148">Train</text>
+  <text class="small" x="985" y="174">MobileNetV3</text>
+  <text class="small" x="985" y="196">AdamW + cosine</text>
+  <text class="metric" x="985" y="218">steering loss</text>
+
+  <rect class="box" x="225" y="270" width="690" height="48"/>
+  <text class="small" x="248" y="300">90/10 train-validation split, ImageNet normalization, early stopping, best checkpoint saved as best_model.pth.</text>
+</svg>

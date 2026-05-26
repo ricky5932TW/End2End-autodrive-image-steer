@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="360" viewBox="0 0 960 360" role="img" aria-labelledby="title desc">
+  <title id="title">Resampling reduces straight-driving bias</title>
+  <desc id="desc">A bar chart comparing rare high-steering action rows in the raw train split with their share in a balanced training batch.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 25px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 15px Arial, sans-serif; fill: #4b5563; }
+      .axis { stroke: #94a3b8; stroke-width: 2; }
+      .label { font: 700 16px Arial, sans-serif; fill: #111827; }
+      .small { font: 13px Arial, sans-serif; fill: #475569; }
+      .pct { font: 700 22px Arial, sans-serif; fill: #0f766e; }
+      .common { fill: #cbd5e1; }
+      .rare { fill: #f97316; }
+      .batch { fill: #06b6d4; }
+      .legend { font: 13px Arial, sans-serif; fill: #334155; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="960" height="360" rx="14"/>
+  <text class="title" x="44" y="48">Resampling Strategy</text>
+  <text class="subtitle" x="44" y="74">Most driving frames are straight or low-steering. Each training batch deliberately contains many high-action examples.</text>
+
+  <line class="axis" x1="110" y1="282" x2="850" y2="282"/>
+  <line class="axis" x1="110" y1="110" x2="110" y2="282"/>
+
+  <text class="label" x="168" y="312">Raw train split</text>
+  <text class="small" x="168" y="332">5,060 / 65,648 rows over 3 std</text>
+  <rect class="common" x="190" y="128" width="170" height="154" rx="8"/>
+  <rect class="rare" x="190" y="269" width="170" height="13" rx="4"/>
+  <text class="pct" x="242" y="116">7.7%</text>
+  <text class="small" x="210" y="158">common steering</text>
+  <text class="small" x="215" y="263">rare action rows</text>
+
+  <text class="label" x="568" y="312">Training batch</text>
+  <text class="small" x="568" y="332">512 / 1024 rows sampled from outliers</text>
+  <rect class="common" x="590" y="128" width="170" height="154" rx="8"/>
+  <rect class="batch" x="590" y="205" width="170" height="77" rx="8"/>
+  <text class="pct" x="640" y="116">50%</text>
+  <text class="small" x="608" y="158">regular rows</text>
+  <text class="small" x="612" y="250">rare-action rows</text>
+
+  <rect class="rare" x="112" y="42" width="14" height="14" rx="3"/>
+  <text class="legend" x="134" y="54">Raw rare-action share</text>
+  <rect class="batch" x="290" y="42" width="14" height="14" rx="3"/>
+  <text class="legend" x="312" y="54">Batch rare-action share</text>
+</svg>

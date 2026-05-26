@@ -59,14 +59,55 @@ flowchart LR
 
 Runtime 會擷取遊戲畫面，套用與訓練時一致的 resize、crop 與 ImageNet normalization；如果 checkpoint 需要 telemetry，會將視覺特徵與遙測資料融合，最後透過 `vgamepad` 送出方向盤控制。Live debug window 會顯示 raw frame、model input、Grad-CAM++ overlay，以及 AI steering 和 UDP steering 的對照。
 
+Runtime steering 在這裡被刻意當成 feedback-control 問題，而不是「模型輸出多少，車子就線性轉多少」。模型預測的是 normalized steering target，但 virtual Xbox stick 本身有小 deadzone，遊戲也會套自己的 input response curve；真正車輛反應還會受到速度、抓地力、打滑與賽道路面的非線性影響。再加上目前視覺模型還不是很穩健，離開熟悉資料分布時可能會抖動或修正不足。所以 live loop 會用 `--steer-scale` 放大/縮小模型 target，對實際送出的 stick command 做 smoothing，讓太小的 command 通過 controller deadzone 歸零，並用 PID 對 Forza UDP `Steer` 做閉迴路修正。Optional Kalman filter 則是在 PID 前先把 UDP steering measurement 濾得穩一點。實務上 PID/Kalman 不是裝飾，而是把不完美 imitation model 接到可玩的 closed-loop controller 中間那一層。
+
 核心檔案：
 
 - `forza_autodrive/drive.py`: live inference loop、debug window、hotkeys、controller output
 - `forza_autodrive/model.py`: MobileNetV3-Small backbone 與 steering head
 - `forza_autodrive/preprocess.py`: capture、resize、crop、normalization
 - `forza_autodrive/telemetry.py`: Forza Dash UDP parser
-- `forza_autodrive/steering_control.py`: PID correction 與 optional scalar Kalman filtering
+- `forza_autodrive/controller.py`: virtual Xbox output、steering deadzone 與 command smoothing
+- `forza_autodrive/steering_control.py`: PID correction、correction limiting、rate limiting 與 optional scalar Kalman filtering
 - `load_data.ipynb`: training、validation plots、prediction inspection、Grad-CAM/Score-CAM analysis
+
+## 訓練、資料擴增與重採樣
+
+Training notebook 的核心問題很實際：收集到的大部分駕駛畫面都是直線或小角度 steering，但模型在實際控制時需要看過足夠多的左彎、右彎、修正與高曲率案例，才不會只學到「一直直走」。
+
+<p align="center">
+  <img src="docs/assets/training-pipeline.svg" alt="Training pipeline diagram from Forza data collection to steering loss" width="900">
+</p>
+
+資料集與前處理：
+
+- 從 8 個錄製 session 的 `dataset.csv` 載入資料。
+- 96,182 筆 raw rows 經過 `Speed > 0` 與 `is_valid == 1` 過濾後，留下 72,942 筆有效移動資料。
+- Steering label 使用 EMA 平滑，`alpha=0.70`。
+- 使用固定 seed 做 90/10 train/validation split。
+- 影像 resize 後裁切到專注路面的 `(0, 75, 320, 122)`，再套用 ImageNet normalization。
+
+資料擴增的目的，是讓 visual policy 不要只記住單一錄影分布。Dataset 會做 horizontal flip 並同步把 steering 正負號反轉，也會加入 brightness/contrast jitter、小角度 rotation、affine translation/scale、grayscale、invert、posterize、solarize、sharpness、autocontrast、equalize、random erasing 與 Gaussian noise。
+
+<p align="center">
+  <img src="docs/assets/resampling-balance.svg" alt="Resampling diagram showing rare action rows increasing from 7.7 percent to 50 percent of a batch" width="780">
+</p>
+
+自訂的 `StdOutlierActionBatchSampler` 會把 action value 距離 train-set mean 超過 `3 std` 的 row 標成 high-action examples。這些資料只佔 train split 的 7.7%（`5,060 / 65,648`），但每個 1,024 筆的 training batch 會刻意抽 512 筆來自這個 high-action group。這樣左/右修正與彎道資料在訓練中出現的頻率，就不會被大量直線資料淹沒。
+
+目前 checkpoint path 使用 MobileNetV3-Small visual backbone，搭配 AdamW、warmup、cosine restarts、early stopping，以及 steering-only weighted MSE。較大的絕對 steering target 會被賦予更高權重。Notebook 中 accel/brake loss 目前是註解掉的；runtime 這條路徑會固定 accel/brake output，主要學習 steering。
+
+和 NVIDIA DAVE-2 / end-to-end driving 的對照：
+
+| 面向 | 相同想法 | 本 repo 的做法 |
+| --- | --- | --- |
+| Supervision | 從 pixels 與人類/駕駛指令學 steering。 | 從 Forza screen capture 與錄下的 controller/telemetry labels 學 steering。 |
+| Preprocessing | 使用道路相關視覺輸入，而不是先手工標註 lane。 | 裁切遊戲畫面下方 road band，並使用 ImageNet statistics normalization。 |
+| Augmentation | NVIDIA 用 shifted/rotated views 與修正後 steering labels 來訓練 recovery。 | 本 repo 使用影像資料擴增，加上 horizontal flip 與 steering sign inversion。 |
+| Imbalance | 因為直線資料佔多數，彎道與 recovery case 需要被特別強化。 | 超過 `3 std` 的 rare action rows 從 train rows 的 7.7% 被提升到每個 batch 的 50%。 |
+| Vehicle interface | NVIDIA 從真實道路車輛 CAN bus 收 steering，並用 `1/r` turning curvature 當 target。 | 本 repo 使用 Forza 資料、平滑後 steering labels、遊戲 telemetry、PID/Kalman feedback 與 virtual Xbox controller。 |
+
+NVIDIA 原始的 training 與 architecture figures 請看 [paper](https://arxiv.org/abs/1604.07316) 與 [PDF](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf)。這份 README 的圖是從本 repo notebook 統計資料產生的原創 diagram，沒有複製外部圖片。
 
 ## 可解釋性觀察
 
@@ -143,6 +184,8 @@ Hotkeys:
 ```powershell
 py -m forza_autodrive.drive --steer-scale 2.0 --steer-feedback pid --steer-kalman --fps 30
 ```
+
+Steering feedback 調參通常先從 `--steer-scale` 開始，因為模型 target 和遊戲內 stick response 不是一對一線性關係。如果車子吃不到小修正，可能是 scale 太低，或 command 還在 gamepad/game deadzone 裡；如果車身開始左右震盪，可以降低 `--steer-scale`、降低 PID gains、降低 `--steer-pid-correction-limit`，或開 `--steer-kalman` 讓 PID 看到比較不吵的 UDP steering measurement。當模型平均方向是對的、但 frame-to-frame 太抖時，`--steer-smoothing` 和 `--steer-pid-correction-rate-limit` 會比較有幫助。
 
 ## README Asset Workflow
 

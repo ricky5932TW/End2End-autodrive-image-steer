@@ -59,14 +59,55 @@ flowchart LR
 
 The runtime captures the game screen, applies the same crop and ImageNet normalization used in training, fuses visual features with telemetry when the checkpoint expects it, and sends steering commands through `vgamepad`. A live debug window shows the raw frame, model input, Grad-CAM++ overlay, and AI-vs-UDP steering bars.
 
+Runtime steering is intentionally treated as a feedback-control problem, not a direct linear mapping from model output to car motion. The model predicts a normalized steering target, but the virtual Xbox stick has a small deadzone, the game applies its own input response curve, and the vehicle dynamics are non-linear across speed, grip, tire slip, and track surface. A small visual model can also jitter or under-correct outside its familiar data distribution. For that reason, the live loop can scale the model target with `--steer-scale`, smooth the actual stick command, zero tiny commands through the controller deadzone, and use PID feedback against Forza UDP `Steer`. Optional Kalman filtering makes that UDP measurement less noisy before PID correction. In practice, PID/Kalman are not just polish; they are the bridge between an imperfect imitation model and a playable closed-loop controller.
+
 Core implementation:
 
 - `forza_autodrive/drive.py`: live inference loop, debug window, hotkeys, controller output
 - `forza_autodrive/model.py`: MobileNetV3-Small backbone with a steering head
 - `forza_autodrive/preprocess.py`: capture, resize, crop, normalization
 - `forza_autodrive/telemetry.py`: Forza Dash UDP parser
-- `forza_autodrive/steering_control.py`: PID correction and optional scalar Kalman filtering
+- `forza_autodrive/controller.py`: virtual Xbox output, steering deadzone, and command smoothing
+- `forza_autodrive/steering_control.py`: PID correction, correction limiting, rate limiting, and optional scalar Kalman filtering
 - `load_data.ipynb`: training, validation plots, prediction inspection, and Grad-CAM/Score-CAM analysis
+
+## Training, Augmentation, and Resampling
+
+The training notebook is organized around one practical problem: most collected driving frames are easy straight or low-steering moments, while the model needs enough left turns, right turns, recoveries, and high-curvature examples to stay useful at runtime.
+
+<p align="center">
+  <img src="docs/assets/training-pipeline.svg" alt="Training pipeline diagram from Forza data collection to steering loss" width="900">
+</p>
+
+Dataset and preprocessing:
+
+- 8 recorded sessions are loaded from `dataset.csv` files.
+- 96,182 raw rows become 72,942 valid moving rows after `Speed > 0` and `is_valid == 1` filtering.
+- Steering labels are smoothed with an EMA filter using `alpha=0.70`.
+- Data is split 90/10 for training and validation with a fixed seed.
+- Images are resized and cropped to the road-focused box `(0, 75, 320, 122)`, then ImageNet-normalized.
+
+Training augmentation keeps the visual policy from memorizing one narrow capture distribution. The dataset applies horizontal flips with steering sign inversion, brightness/contrast jitter, small rotation and affine translation/scale, grayscale, invert, posterize, solarize, sharpness, autocontrast, equalize, random erasing, and Gaussian noise.
+
+<p align="center">
+  <img src="docs/assets/resampling-balance.svg" alt="Resampling diagram showing rare action rows increasing from 7.7 percent to 50 percent of a batch" width="780">
+</p>
+
+The custom `StdOutlierActionBatchSampler` marks rows whose action values are more than `3 std` from the train-set mean. These rows are only 7.7% of the train split (`5,060 / 65,648`), but each 1,024-sample training batch deliberately draws 512 rows from that high-action group. This makes left/right corrections and curves appear much more often than they would under uniform sampling.
+
+The current checkpoint path trains a MobileNetV3-Small visual backbone with AdamW, warmup, cosine restarts, early stopping, and a steering-only weighted MSE. Larger absolute steering targets receive more weight. Accel and brake losses are currently commented out in the notebook; the runtime path fixes accel/brake outputs while learning steering.
+
+Comparison with NVIDIA DAVE-2 / end-to-end driving:
+
+| Aspect | Same idea | This repo's implementation |
+| --- | --- | --- |
+| Supervision | Learn steering from pixels and human/driver commands. | Learn steering from Forza screen captures and recorded controller/telemetry labels. |
+| Preprocessing | Use a road-focused visual input instead of hand-labeled lanes. | Crop the game frame to the lower road band and normalize with ImageNet statistics. |
+| Augmentation | NVIDIA used recovery-style augmentation with shifted/rotated views and corrected steering labels. | This repo uses image augmentations plus horizontal flip with steering sign inversion. |
+| Imbalance | Curves and recovery cases need extra attention because straight driving dominates raw data. | Rare action rows above `3 std` are boosted from 7.7% of training rows to 50% of each batch. |
+| Vehicle interface | NVIDIA collected real-road steering through CAN bus and used `1/r` turning curvature as the target. | This repo uses Forza data, filtered steering labels, game telemetry, PID/Kalman feedback, and a virtual Xbox controller. |
+
+For NVIDIA's original training and architecture figures, see the [paper](https://arxiv.org/abs/1604.07316) and [PDF](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf). The diagrams in this README are generated from this repo's own notebook statistics and do not copy external figures.
 
 ## Interpretability
 
@@ -143,6 +184,8 @@ Useful options:
 ```powershell
 py -m forza_autodrive.drive --steer-scale 2.0 --steer-feedback pid --steer-kalman --fps 30
 ```
+
+Steering feedback tuning starts with `--steer-scale`, because the model target and in-game stick response are not one-to-one. If the car ignores small corrections, scale may be too low or the command may be inside the gamepad/game deadzone. If it oscillates, lower `--steer-scale`, lower PID gains, reduce `--steer-pid-correction-limit`, or enable `--steer-kalman` so PID follows a less noisy UDP steering measurement. `--steer-smoothing` and `--steer-pid-correction-rate-limit` are useful when the model is visually correct on average but too twitchy frame to frame.
 
 ## README Asset Workflow
 
