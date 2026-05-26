@@ -1,1 +1,7 @@
-/forza_autodrive/__pycache__
+/forza_autodrive/__pycache__/
+__pycache__/
+
+# Large local artifacts. Use tools/export_readme_assets.py to publish
+# small curated media under docs/assets/.
+media/
+*.pth
