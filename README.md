@@ -1,6 +1,6 @@
 # End2End Autodrive Image-Steer
 
-[Traditional Chinese README](README.zh-TW.md)
+[中文](README.zh-TW.md)
 
 Image-to-steering imitation learning for Forza: collect driving data quickly in a rich game environment, train an end-to-end visual controller, and run it live through a virtual Xbox controller with telemetry feedback.
 
