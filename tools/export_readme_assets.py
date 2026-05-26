@@ -16,6 +16,7 @@ import imageio_ffmpeg
 
 
 MAX_VIDEO_BYTES = 10 * 1024 * 1024
+MAX_GIF_BYTES = 10 * 1024 * 1024
 MAX_POSTER_BYTES = 500 * 1024
 MAX_ASSET_BYTES = 100 * 1024 * 1024
 MAX_SVG_BYTES = 250 * 1024
@@ -88,6 +89,10 @@ def probe_duration_s(ffmpeg: str, path: Path) -> float | None:
 
 def scale_filter(max_width: int) -> str:
     return f"fps=24,scale='min({max_width},iw)':-2"
+
+
+def gif_scale_filter(max_width: int, fps: int) -> str:
+    return f"fps={fps},scale='min({max_width},iw)':-2:flags=lanczos"
 
 
 def encode_clip(
@@ -172,6 +177,61 @@ def export_poster(
     print(f"poster {output.name}: {output.stat().st_size / 1024:.0f} KiB")
 
 
+def export_gif_preview(ffmpeg: str, source: Path, output: Path) -> None:
+    attempts = (
+        {"width": 640, "fps": 12},
+        {"width": 480, "fps": 12},
+        {"width": 420, "fps": 10},
+        {"width": 360, "fps": 10},
+        {"width": 320, "fps": 8},
+    )
+    palette = output.with_name(f"{output.stem}-palette.png")
+    for attempt in attempts:
+        output.unlink(missing_ok=True)
+        palette.unlink(missing_ok=True)
+        filters = gif_scale_filter(attempt["width"], attempt["fps"])
+        run_ffmpeg(
+            [
+                ffmpeg,
+                "-y",
+                "-hide_banner",
+                "-i",
+                str(source),
+                "-vf",
+                f"{filters},palettegen=stats_mode=diff",
+                "-update",
+                "1",
+                str(palette),
+            ]
+        )
+        run_ffmpeg(
+            [
+                ffmpeg,
+                "-y",
+                "-hide_banner",
+                "-i",
+                str(source),
+                "-i",
+                str(palette),
+                "-lavfi",
+                f"{filters}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle",
+                "-loop",
+                "0",
+                str(output),
+            ]
+        )
+        size = output.stat().st_size
+        print(
+            f"gif {output.name}: {size / 1024 / 1024:.2f} MiB "
+            f"(width<={attempt['width']}, fps={attempt['fps']})"
+        )
+        if size <= MAX_GIF_BYTES:
+            palette.unlink(missing_ok=True)
+            return
+    palette.unlink(missing_ok=True)
+    raise RuntimeError(f"{output} is still larger than {MAX_GIF_BYTES} bytes")
+
+
 def compress_jpeg(input_path: Path, output_path: Path, max_bytes: int) -> None:
     with Image.open(input_path) as image:
         image = image.convert("RGB")
@@ -208,6 +268,7 @@ def export_clips(source_dir: Path, out_dir: Path, tail_trim_s: float) -> None:
 
         clip_path = out_dir / f"{spec.name}.mp4"
         poster_path = out_dir / f"{spec.name}-poster.jpg"
+        gif_path = out_dir / f"{spec.name}-preview.gif"
         poster_s = start_s + min(spec.poster_at_s, max(0.0, duration_s - 0.25))
         print(
             f"exporting {spec.name}: start={start_s:.2f}s duration={duration_s:.2f}s "
@@ -215,6 +276,7 @@ def export_clips(source_dir: Path, out_dir: Path, tail_trim_s: float) -> None:
         )
         encode_clip(ffmpeg, source, clip_path, start_s, duration_s)
         export_poster(ffmpeg, source, poster_path, poster_s)
+        export_gif_preview(ffmpeg, clip_path, gif_path)
 
 
 def notebook_pngs(notebook_path: Path) -> dict[int, bytes]:
@@ -450,6 +512,8 @@ def assert_asset_sizes(paths: Iterable[Path]) -> None:
             raise RuntimeError(f"{path} is larger than GitHub's 100 MiB file limit")
         if path.suffix.lower() == ".mp4" and size > MAX_VIDEO_BYTES:
             raise RuntimeError(f"{path} is larger than the README video budget")
+        if path.suffix.lower() == ".gif" and size > MAX_GIF_BYTES:
+            raise RuntimeError(f"{path} is larger than the README GIF budget")
         if path.name.endswith("-poster.jpg") and size > MAX_POSTER_BYTES:
             raise RuntimeError(f"{path} is larger than the poster budget")
         if path.suffix.lower() == ".svg" and size > MAX_SVG_BYTES:

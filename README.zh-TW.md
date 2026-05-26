@@ -6,12 +6,12 @@
 
 <p align="center">
   <a href="docs/assets/live-debug.mp4">
-    <img src="docs/assets/live-debug-poster.jpg" alt="Forza live debug view" width="900">
+    <img src="docs/assets/live-debug-preview.gif" alt="Forza live debug view" width="640">
   </a>
 </p>
 
 <p align="center">
-  <a href="docs/assets/live-debug.mp4">觀看 9 秒 live debug 片段</a>
+  <a href="docs/assets/live-debug.mp4">開啟 9 秒 live debug MP4</a>
 </p>
 
 ## 為什麼用遊戲
@@ -32,14 +32,14 @@ Sony AI 的 GT Sophy 是重要動機：Nature 論文展示了 Gran Turismo 中�
 | 2022 | Sony AI GT Sophy | Gran Turismo 中的深度強化學習證明賽車遊戲能支撐高性能、複雜規則下的控制研究。 |
 | 2026 | This repo | 使用 Forza 建立快速資料收集與端到端 image steering 評估迴圈。 |
 
-## Demo Clips
+## 示範片段
 
-以下是從本機錄影剪出的 GitHub-safe 無聲短片。原始大影片保留在本機 `media/`，不進 Git。
+以下是從本機錄影剪出的 GitHub-safe 無聲短片。GIF 預覽可以在 GitHub README 直接動起來；點縮圖或 MP4 連結可開啟原始短片。原始大影片保留在本機 `media/`，不進 Git。
 
 | Live Debug | Long Run | Short Control |
 | --- | --- | --- |
-| <a href="docs/assets/live-debug.mp4"><img src="docs/assets/live-debug-poster.jpg" alt="Live debug clip poster" width="280"></a> | <a href="docs/assets/long-run.mp4"><img src="docs/assets/long-run-poster.jpg" alt="Long run clip poster" width="280"></a> | <a href="docs/assets/short-control.mp4"><img src="docs/assets/short-control-poster.jpg" alt="Short control clip poster" width="280"></a> |
-| [MP4](docs/assets/live-debug.mp4) | [MP4](docs/assets/long-run.mp4) | [MP4](docs/assets/short-control.mp4) |
+| <a href="docs/assets/live-debug.mp4"><img src="docs/assets/live-debug-preview.gif" alt="Live debug animated preview" width="280"></a> | <a href="docs/assets/long-run.mp4"><img src="docs/assets/long-run-preview.gif" alt="Long run animated preview" width="280"></a> | <a href="docs/assets/short-control.mp4"><img src="docs/assets/short-control-preview.gif" alt="Short control animated preview" width="280"></a> |
+| [開啟 MP4](docs/assets/live-debug.mp4) | [開啟 MP4](docs/assets/long-run.mp4) | [開啟 MP4](docs/assets/short-control.mp4) |
 
 ## 系統架構
 

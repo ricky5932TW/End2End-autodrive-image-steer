@@ -6,12 +6,12 @@ Image-to-steering imitation learning for Forza: collect driving data quickly in 
 
 <p align="center">
   <a href="docs/assets/live-debug.mp4">
-    <img src="docs/assets/live-debug-poster.jpg" alt="Live Forza debug view with raw frame, model input, Grad-CAM overlay, and steering bars" width="900">
+    <img src="docs/assets/live-debug-preview.gif" alt="Live Forza debug view with raw frame, model input, Grad-CAM overlay, and steering bars" width="640">
   </a>
 </p>
 
 <p align="center">
-  <a href="docs/assets/live-debug.mp4">Watch the 9s live debug clip</a>
+  <a href="docs/assets/live-debug.mp4">Open the 9s live debug MP4</a>
 </p>
 
 ## Why Games
@@ -34,12 +34,12 @@ Sony AI's GT Sophy is a strong motivation for taking racing games seriously as r
 
 ## Demo Clips
 
-These are curated, muted, GitHub-safe clips generated from local recordings. Raw videos remain ignored in `media/`.
+These are curated, muted, GitHub-safe clips generated from local recordings. The GIF previews render inline on GitHub; click a preview or MP4 link to open the original clip. Raw videos remain ignored in `media/`.
 
 | Live Debug | Long Run | Short Control |
 | --- | --- | --- |
-| <a href="docs/assets/live-debug.mp4"><img src="docs/assets/live-debug-poster.jpg" alt="Live debug clip poster" width="280"></a> | <a href="docs/assets/long-run.mp4"><img src="docs/assets/long-run-poster.jpg" alt="Long run clip poster" width="280"></a> | <a href="docs/assets/short-control.mp4"><img src="docs/assets/short-control-poster.jpg" alt="Short control clip poster" width="280"></a> |
-| [MP4](docs/assets/live-debug.mp4) | [MP4](docs/assets/long-run.mp4) | [MP4](docs/assets/short-control.mp4) |
+| <a href="docs/assets/live-debug.mp4"><img src="docs/assets/live-debug-preview.gif" alt="Live debug animated preview" width="280"></a> | <a href="docs/assets/long-run.mp4"><img src="docs/assets/long-run-preview.gif" alt="Long run animated preview" width="280"></a> | <a href="docs/assets/short-control.mp4"><img src="docs/assets/short-control-preview.gif" alt="Short control animated preview" width="280"></a> |
+| [Open MP4](docs/assets/live-debug.mp4) | [Open MP4](docs/assets/long-run.mp4) | [Open MP4](docs/assets/short-control.mp4) |
 
 ## System Overview
 
