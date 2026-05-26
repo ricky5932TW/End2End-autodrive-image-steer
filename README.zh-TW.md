@@ -18,7 +18,7 @@
 
 真實自駕資料昂貴、難標註，也很難在相同條件下重複實驗。賽車遊戲提供一個實用的學術沙盒：豐富視覺場景、不同光線、賽道幾何、輪胎極限、遙測資料，以及快速重置。
 
-這個專案利用遊戲做 supervised end-to-end driving。目標不是宣稱從遊戲畫面就能直接做真實道路自駕，而是把資料收集做得更快、更安全、更可重複，同時保留足夠複雜的控制問題來研究 image-to-action policy。
+這個專案使用賽車遊戲資料做 supervised end-to-end driving，讓資料收集更快、更安全、更可重複，同時保留足夠複雜的控制問題來研究 image-to-action policy。
 
 Sony AI 的 GT Sophy 是重要動機：Nature 論文展示了 Gran Turismo 中的深度強化學習 agent 可以處理非線性賽車控制與多人競速策略，甚至達到冠軍級表現。本 repo 探索的是一個比較小但相關的問題：如果把遊戲當成資料引擎，一個實用的影像轉方向盤 pipeline 可以做到什麼程度？
 
@@ -59,7 +59,7 @@ flowchart LR
 
 Runtime 會擷取遊戲畫面，套用與訓練時一致的 resize、crop 與 ImageNet normalization；如果 checkpoint 需要 telemetry，會將視覺特徵與遙測資料融合，最後透過 `vgamepad` 送出方向盤控制。Live debug window 會顯示 raw frame、model input、Grad-CAM++ overlay，以及 AI steering 和 UDP steering 的對照。
 
-Runtime steering 在這裡被刻意當成 feedback-control 問題，而不是「模型輸出多少，車子就線性轉多少」。模型預測的是 normalized steering target，但 virtual Xbox stick 本身有小 deadzone，遊戲也會套自己的 input response curve；真正車輛反應還會受到速度、抓地力、打滑與賽道路面的非線性影響。再加上目前視覺模型還不是很穩健，離開熟悉資料分布時可能會抖動或修正不足。所以 live loop 會用 `--steer-scale` 放大/縮小模型 target，對實際送出的 stick command 做 smoothing，讓太小的 command 通過 controller deadzone 歸零，並用 PID 對 Forza UDP `Steer` 做閉迴路修正。Optional Kalman filter 則是在 PID 前先把 UDP steering measurement 濾得穩一點。實務上 PID/Kalman 不是裝飾，而是把不完美 imitation model 接到可玩的 closed-loop controller 中間那一層。
+Runtime steering 使用 feedback-control loop。模型預測 normalized steering target，virtual Xbox stick 本身有小 deadzone，遊戲也會套自己的 input response curve；實際車輛反應會受到速度、抓地力、打滑與賽道路面的非線性影響。目前視覺模型離開熟悉資料分布時可能會抖動或修正不足。Live loop 會用 `--steer-scale` 放大/縮小模型 target，對實際送出的 stick command 做 smoothing，讓太小的 command 通過 controller deadzone 歸零，並用 PID 對 Forza UDP `Steer` 做閉迴路修正。Optional Kalman filter 會在 PID 前先把 UDP steering measurement 濾得穩一點。PID/Kalman 是 imitation model 與可玩的 closed-loop controller 之間的控制層。
 
 核心檔案：
 
@@ -74,6 +74,8 @@ Runtime steering 在這裡被刻意當成 feedback-control 問題，而不是「
 ## 訓練、資料擴增與重採樣
 
 Training notebook 的核心問題很實際：收集到的大部分駕駛畫面都是直線或小角度 steering，但模型在實際控制時需要看過足夠多的左彎、右彎、修正與高曲率案例，才不會只學到「一直直走」。
+
+錄製資料是在 racing line 上跑圈，畫面中也有競爭對手。轉彎 label 常會偏向壓 apex、找賽道旁的煞車點或 turn-in marker，也會出現跑圈時跟隨前車的畫面。這種資料分布可能讓 live run 的 steering 不穩定，模型鎖到 apex、marker 或附近車輛時，可能突然做出大角度修正。
 
 <p align="center">
   <img src="docs/assets/training-pipeline.svg" alt="Training pipeline diagram from Forza data collection to steering loss" width="900">
@@ -102,12 +104,12 @@ Training notebook 的核心問題很實際：收集到的大部分駕駛畫面�
 | 面向 | 相同想法 | 本 repo 的做法 |
 | --- | --- | --- |
 | Supervision | 從 pixels 與人類/駕駛指令學 steering。 | 從 Forza screen capture 與錄下的 controller/telemetry labels 學 steering。 |
-| Preprocessing | 使用道路相關視覺輸入，而不是先手工標註 lane。 | 裁切遊戲畫面下方 road band，並使用 ImageNet statistics normalization。 |
+| Preprocessing | 使用 camera frame 中道路相關的視覺輸入。 | 裁切遊戲畫面下方 road band，並使用 ImageNet statistics normalization。 |
 | Augmentation | NVIDIA 用 shifted/rotated views 與修正後 steering labels 來訓練 recovery。 | 本 repo 使用影像資料擴增，加上 horizontal flip 與 steering sign inversion。 |
 | Imbalance | 因為直線資料佔多數，彎道與 recovery case 需要被特別強化。 | 超過 `3 std` 的 rare action rows 從 train rows 的 7.7% 被提升到每個 batch 的 50%。 |
 | Vehicle interface | NVIDIA 從真實道路車輛 CAN bus 收 steering，並用 `1/r` turning curvature 當 target。 | 本 repo 使用 Forza 資料、平滑後 steering labels、遊戲 telemetry、PID/Kalman feedback 與 virtual Xbox controller。 |
 
-NVIDIA 原始的 training 與 architecture figures 請看 [paper](https://arxiv.org/abs/1604.07316) 與 [PDF](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf)。這份 README 的圖是從本 repo notebook 統計資料產生的原創 diagram，沒有複製外部圖片。
+NVIDIA 原始的 training 與 architecture figures 請看 [paper](https://arxiv.org/abs/1604.07316) 與 [PDF](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf)。這份 README 的圖是從本 repo notebook 統計資料產生的 diagram。
 
 ## 可解釋性觀察
 
@@ -125,7 +127,7 @@ Notebook 中包含訓練後 steering model 的 Score-CAM/Grad-CAM 類型檢查�
   <img src="docs/assets/scorecam-shallow-layer.jpg" alt="Shallow-layer Score-CAM montage highlighting road markings" width="900">
 </p>
 
-這和 NVIDIA 端到端自駕論文中的觀察相呼應：只用 steering supervision，CNN 也可能學到道路相關內部特徵，而不是必須先明確標註 lane 或 road outline。在這個 repo 中，這只是對 Forza 模型注意區域的定性 sanity check，不是因果性的正式證明。
+這和 NVIDIA 端到端自駕論文中的觀察相呼應：只用 steering supervision，CNN 也可能從駕駛資料學到道路相關內部特徵。在這個 repo 中，這是對 Forza 模型注意區域的定性 sanity check。
 
 ## Quick Start
 
@@ -185,7 +187,7 @@ Hotkeys:
 py -m forza_autodrive.drive --steer-scale 2.0 --steer-feedback pid --steer-kalman --fps 30
 ```
 
-Steering feedback 調參通常先從 `--steer-scale` 開始，因為模型 target 和遊戲內 stick response 不是一對一線性關係。如果車子吃不到小修正，可能是 scale 太低，或 command 還在 gamepad/game deadzone 裡；如果車身開始左右震盪，可以降低 `--steer-scale`、降低 PID gains、降低 `--steer-pid-correction-limit`，或開 `--steer-kalman` 讓 PID 看到比較不吵的 UDP steering measurement。當模型平均方向是對的、但 frame-to-frame 太抖時，`--steer-smoothing` 和 `--steer-pid-correction-rate-limit` 會比較有幫助。
+Steering feedback 調參通常先從 `--steer-scale` 開始，因為模型 target 和遊戲內 stick response 是非線性對應關係。如果車子吃不到小修正，可能是 scale 太低，或 command 還在 gamepad/game deadzone 裡；如果車身開始左右震盪，可以降低 `--steer-scale`、降低 PID gains、降低 `--steer-pid-correction-limit`，或開 `--steer-kalman` 讓 PID 看到比較不吵的 UDP steering measurement。當模型平均方向是對的，frame-to-frame 太抖時，`--steer-smoothing` 和 `--steer-pid-correction-rate-limit` 會比較有幫助。
 
 ## README Asset Workflow
 

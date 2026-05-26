@@ -18,9 +18,9 @@ Image-to-steering imitation learning for Forza: collect driving data quickly in 
 
 Real autonomous-driving data is expensive to collect, hard to label, and difficult to repeat under controlled conditions. Racing games offer a practical academic sandbox: dense visual scenes, changing lighting, track geometry, tire limits, telemetry, and fast resets.
 
-This project uses that advantage for supervised end-to-end driving. The goal is not to claim real-car autonomy from game frames. The goal is to make data collection faster, safer, and more repeatable while preserving enough control complexity to study image-to-action policies.
+This project uses racing-game data for supervised end-to-end driving, with faster, safer, and more repeatable data collection while preserving enough control complexity to study image-to-action policies.
 
-Sony AI's GT Sophy is a strong motivation for taking racing games seriously as research environments: the Nature paper shows deep reinforcement learning agents trained in Gran Turismo can handle non-linear race-car control and multi-agent tactics at champion level. This repo explores a smaller but related question: how far can a practical image-steering pipeline go when the game is used as the data engine?
+Sony AI's GT Sophy is a strong motivation for taking racing games seriously as research environments: the Nature paper shows deep reinforcement learning agents trained in Gran Turismo can handle non-linear race-car control and multi-agent tactics at champion level. This repo explores a smaller related question: how far can a practical image-steering pipeline go when the game is used as the data engine?
 
 ## Research Lineage
 
@@ -59,7 +59,7 @@ flowchart LR
 
 The runtime captures the game screen, applies the same crop and ImageNet normalization used in training, fuses visual features with telemetry when the checkpoint expects it, and sends steering commands through `vgamepad`. A live debug window shows the raw frame, model input, Grad-CAM++ overlay, and AI-vs-UDP steering bars.
 
-Runtime steering is intentionally treated as a feedback-control problem, not a direct linear mapping from model output to car motion. The model predicts a normalized steering target, but the virtual Xbox stick has a small deadzone, the game applies its own input response curve, and the vehicle dynamics are non-linear across speed, grip, tire slip, and track surface. A small visual model can also jitter or under-correct outside its familiar data distribution. For that reason, the live loop can scale the model target with `--steer-scale`, smooth the actual stick command, zero tiny commands through the controller deadzone, and use PID feedback against Forza UDP `Steer`. Optional Kalman filtering makes that UDP measurement less noisy before PID correction. In practice, PID/Kalman are not just polish; they are the bridge between an imperfect imitation model and a playable closed-loop controller.
+Runtime steering uses a feedback-control loop. The model predicts a normalized steering target. The virtual Xbox stick has a small deadzone, the game applies its own input response curve, and vehicle dynamics vary across speed, grip, tire slip, and track surface. A small visual model can also jitter or under-correct outside its familiar data distribution. The live loop can scale the model target with `--steer-scale`, smooth the actual stick command, zero tiny commands through the controller deadzone, and use PID feedback against Forza UDP `Steer`. Optional Kalman filtering makes that UDP measurement less noisy before PID correction. PID/Kalman form the control layer between the imitation model and a playable closed-loop controller.
 
 Core implementation:
 
@@ -74,6 +74,8 @@ Core implementation:
 ## Training, Augmentation, and Resampling
 
 The training notebook is organized around one practical problem: most collected driving frames are easy straight or low-steering moments, while the model needs enough left turns, right turns, recoveries, and high-curvature examples to stay useful at runtime.
+
+The recorded sessions use racing-line driving and include competitor cars. Cornering labels often favor clipping apexes, using track-side braking or turn-in markers, and following a lead car across repeated laps. This data distribution can produce unstable steering in live runs, including sudden large-angle corrections when the model locks onto an apex, marker, or nearby car.
 
 <p align="center">
   <img src="docs/assets/training-pipeline.svg" alt="Training pipeline diagram from Forza data collection to steering loss" width="900">
@@ -93,7 +95,7 @@ Training augmentation keeps the visual policy from memorizing one narrow capture
   <img src="docs/assets/resampling-balance.svg" alt="Resampling diagram showing rare action rows increasing from 7.7 percent to 50 percent of a batch" width="780">
 </p>
 
-The custom `StdOutlierActionBatchSampler` marks rows whose action values are more than `3 std` from the train-set mean. These rows are only 7.7% of the train split (`5,060 / 65,648`), but each 1,024-sample training batch deliberately draws 512 rows from that high-action group. This makes left/right corrections and curves appear much more often than they would under uniform sampling.
+The custom `StdOutlierActionBatchSampler` marks rows whose action values are more than `3 std` from the train-set mean. These rows make up 7.7% of the train split (`5,060 / 65,648`). Each 1,024-sample training batch deliberately draws 512 rows from that high-action group, increasing the frequency of left/right corrections and curves compared with uniform sampling.
 
 The current checkpoint path trains a MobileNetV3-Small visual backbone with AdamW, warmup, cosine restarts, early stopping, and a steering-only weighted MSE. Larger absolute steering targets receive more weight. Accel and brake losses are currently commented out in the notebook; the runtime path fixes accel/brake outputs while learning steering.
 
@@ -102,12 +104,12 @@ Comparison with NVIDIA DAVE-2 / end-to-end driving:
 | Aspect | Same idea | This repo's implementation |
 | --- | --- | --- |
 | Supervision | Learn steering from pixels and human/driver commands. | Learn steering from Forza screen captures and recorded controller/telemetry labels. |
-| Preprocessing | Use a road-focused visual input instead of hand-labeled lanes. | Crop the game frame to the lower road band and normalize with ImageNet statistics. |
+| Preprocessing | Use road-focused visual input from the camera frame. | Crop the game frame to the lower road band and normalize with ImageNet statistics. |
 | Augmentation | NVIDIA used recovery-style augmentation with shifted/rotated views and corrected steering labels. | This repo uses image augmentations plus horizontal flip with steering sign inversion. |
 | Imbalance | Curves and recovery cases need extra attention because straight driving dominates raw data. | Rare action rows above `3 std` are boosted from 7.7% of training rows to 50% of each batch. |
 | Vehicle interface | NVIDIA collected real-road steering through CAN bus and used `1/r` turning curvature as the target. | This repo uses Forza data, filtered steering labels, game telemetry, PID/Kalman feedback, and a virtual Xbox controller. |
 
-For NVIDIA's original training and architecture figures, see the [paper](https://arxiv.org/abs/1604.07316) and [PDF](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf). The diagrams in this README are generated from this repo's own notebook statistics and do not copy external figures.
+For NVIDIA's original training and architecture figures, see the [paper](https://arxiv.org/abs/1604.07316) and [PDF](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf). The diagrams in this README are generated from this repo's notebook statistics.
 
 ## Interpretability
 
@@ -125,7 +127,7 @@ Shallow-layer attention is more local and repeatedly lights up road texture, lan
   <img src="docs/assets/scorecam-shallow-layer.jpg" alt="Shallow-layer Score-CAM montage highlighting road markings" width="900">
 </p>
 
-This qualitatively echoes the NVIDIA end-to-end driving paper: with steering supervision alone, a CNN can learn internal road features instead of being explicitly trained on lane or road-outline labels. In this repo, the observation is used as a sanity check for what the Forza model appears to attend to, not as a formal proof of causal behavior.
+This qualitatively echoes the NVIDIA end-to-end driving paper: with steering supervision alone, a CNN can learn internal road features from driving data. In this repo, the observation is a sanity check for what the Forza model appears to attend to.
 
 ## Quick Start
 
@@ -185,7 +187,7 @@ Useful options:
 py -m forza_autodrive.drive --steer-scale 2.0 --steer-feedback pid --steer-kalman --fps 30
 ```
 
-Steering feedback tuning starts with `--steer-scale`, because the model target and in-game stick response are not one-to-one. If the car ignores small corrections, scale may be too low or the command may be inside the gamepad/game deadzone. If it oscillates, lower `--steer-scale`, lower PID gains, reduce `--steer-pid-correction-limit`, or enable `--steer-kalman` so PID follows a less noisy UDP steering measurement. `--steer-smoothing` and `--steer-pid-correction-rate-limit` are useful when the model is visually correct on average but too twitchy frame to frame.
+Steering feedback tuning starts with `--steer-scale`, because the model target and in-game stick response have a nonlinear mapping. If the car ignores small corrections, scale may be too low or the command may be inside the gamepad/game deadzone. If it oscillates, lower `--steer-scale`, lower PID gains, reduce `--steer-pid-correction-limit`, or enable `--steer-kalman` so PID follows a less noisy UDP steering measurement. `--steer-smoothing` and `--steer-pid-correction-rate-limit` are useful when the model is visually correct on average while too twitchy frame to frame.
 
 ## README Asset Workflow
 
