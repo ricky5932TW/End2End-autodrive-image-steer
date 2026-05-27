@@ -104,7 +104,22 @@ Training augmentation keeps the visual policy from memorizing one narrow capture
 
 The custom `StdOutlierActionBatchSampler` marks rows whose action values are more than `3 std` from the train-set mean. These rows make up 7.7% of the train split (`5,060 / 65,648`). Each 1,024-sample training batch deliberately draws 512 rows from that high-action group, increasing the frequency of left/right corrections and curves compared with uniform sampling.
 
-The current checkpoint path trains a MobileNetV3-Small visual backbone with AdamW, warmup, cosine restarts, early stopping, and a steering-only weighted MSE. Larger absolute steering targets receive more weight. Accel and brake losses are currently commented out in the notebook; the runtime path fixes accel/brake outputs while learning steering.
+Loss setup:
+
+The active objective is a steering-only weighted MSE. The notebook currently computes:
+
+```text
+steer_loss = mean((pred_steer - target_steer)^2 * weight)
+weight = 1 + max(log(abs(target_steer)), 0.01)
+```
+
+The `weight` multiplier is applied to squared steering error. Near-zero `target_steer` values use a floor, so the minimum multiplier is `1.01x` and straight-driving examples still contribute loss. As the absolute steering target increases, mistakes on turns and large corrections become more expensive: `abs(target_steer)=10` is about `3.30x`, `64` is about `5.16x`, and `127` is about `5.84x`.
+
+<p align="center">
+  <img src="docs/assets/loss-weight-curve.svg" alt="Steering loss weight curve showing the multiplier rising from 1.01x near zero steering to 5.84x at full steering" width="780">
+</p>
+
+The current checkpoint path trains a MobileNetV3-Small visual backbone with AdamW, warmup, cosine restarts, and early stopping. Train/validation total loss, early stopping, and best-checkpoint selection all use steering loss. `accel=0.5` and `brake=0.0` are placeholder outputs in the current steering-only path because accel and brake behavior are not trained yet; the notebook keeps `accel_loss` / `brake_loss` MSE code in place, but it is currently commented out.
 
 Comparison with NVIDIA DAVE-2 / end-to-end driving:
 

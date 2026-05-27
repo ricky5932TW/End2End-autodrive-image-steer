@@ -6,6 +6,7 @@ import argparse
 import base64
 from dataclasses import dataclass
 import json
+import math
 from pathlib import Path
 import re
 import subprocess
@@ -384,6 +385,36 @@ def write_svg(path: Path, content: str) -> None:
 
 
 def export_training_diagrams(out_dir: Path) -> None:
+    plot_left = 110
+    plot_right = 850
+    plot_top = 120
+    plot_bottom = 320
+    plot_width = plot_right - plot_left
+    plot_height = plot_bottom - plot_top
+
+    def loss_weight(abs_steer: float) -> float:
+        log_value = math.log(abs_steer) if abs_steer > 0 else float("-inf")
+        return 1.0 + max(log_value, 0.01)
+
+    def curve_point(abs_steer: float) -> tuple[float, float]:
+        weight = loss_weight(abs_steer)
+        x = plot_left + (abs_steer / 127.0) * plot_width
+        y = plot_bottom - ((weight - 1.0) / 5.0) * plot_height
+        return x, y
+
+    curve_samples = [0.0, 1.0, *[float(value) for value in range(2, 128, 2)], 127.0]
+    curve_points = [curve_point(abs_steer) for abs_steer in curve_samples]
+    curve_path = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in curve_points)
+    area_path = (
+        f"M {plot_left:.1f} {plot_bottom:.1f} L "
+        + " L ".join(f"{x:.1f} {y:.1f}" for x, y in curve_points)
+        + f" L {plot_right:.1f} {plot_bottom:.1f} Z"
+    )
+    marker_points = {
+        name: (*curve_point(abs_steer), loss_weight(abs_steer))
+        for name, abs_steer in (("zero", 0.0), ("ten", 10.0), ("sixty_four", 64.0), ("max", 127.0))
+    }
+
     training_pipeline_svg = """\
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="400" viewBox="0 0 1120 400" role="img" aria-labelledby="title desc">
   <title id="title">Training pipeline for the Forza image-to-steering model</title>
@@ -505,8 +536,106 @@ def export_training_diagrams(out_dir: Path) -> None:
   <text class="legend" x="510" y="374">Batch rare-action share</text>
 </svg>"""
 
+    loss_weight_curve_svg = """\
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-labelledby="title desc">
+  <title id="title">Steering loss weight curve</title>
+  <desc id="desc">A line chart showing how absolute steering target increases the weighted MSE loss multiplier from 1.01x near zero steering to 5.84x at full steering.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L8,3 z" fill="#4b5563"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 25px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 15px Arial, sans-serif; fill: #4b5563; }
+      .axis { stroke: #94a3b8; stroke-width: 2; }
+      .grid { stroke: #e2e8f0; stroke-width: 1; }
+      .tick { font: 12px Arial, sans-serif; fill: #64748b; }
+      .label { font: 700 15px Arial, sans-serif; fill: #111827; }
+      .small { font: 13px Arial, sans-serif; fill: #475569; }
+      .formula { font: 700 14px Arial, sans-serif; fill: #0f766e; }
+      .area { fill: #cffafe; opacity: 0.85; }
+      .curve { stroke: #0891b2; stroke-width: 4; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+      .dot { fill: #f97316; stroke: #ffffff; stroke-width: 3; }
+      .callout { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 8; }
+      .arrow { stroke: #4b5563; stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="960" height="420" rx="14"/>
+  <text class="title" x="44" y="48">Steering Loss Weight</text>
+  <text class="subtitle" x="44" y="74">The weighted MSE keeps straight-driving errors visible, then raises the cost of missing larger steering targets.</text>
+  <text class="formula" x="44" y="98">weight = 1 + max(log(abs(target_steer)), 0.01)</text>
+
+  <line class="grid" x1="110" y1="320" x2="850" y2="320"/>
+  <line class="grid" x1="110" y1="280" x2="850" y2="280"/>
+  <line class="grid" x1="110" y1="240" x2="850" y2="240"/>
+  <line class="grid" x1="110" y1="200" x2="850" y2="200"/>
+  <line class="grid" x1="110" y1="160" x2="850" y2="160"/>
+  <line class="grid" x1="110" y1="120" x2="850" y2="120"/>
+  <line class="axis" x1="110" y1="320" x2="850" y2="320"/>
+  <line class="axis" x1="110" y1="120" x2="110" y2="320"/>
+
+  <text class="tick" x="82" y="324">1x</text>
+  <text class="tick" x="82" y="284">2x</text>
+  <text class="tick" x="82" y="244">3x</text>
+  <text class="tick" x="82" y="204">4x</text>
+  <text class="tick" x="82" y="164">5x</text>
+  <text class="tick" x="82" y="124">6x</text>
+  <text class="tick" x="106" y="342">0</text>
+  <text class="tick" x="164" y="342">10</text>
+  <text class="tick" x="278" y="342">30</text>
+  <text class="tick" x="476" y="342">64</text>
+  <text class="tick" x="838" y="342">127</text>
+  <text class="label" x="386" y="382">abs(target_steer)</text>
+  <text class="label" transform="translate(40 248) rotate(-90)">loss multiplier</text>
+
+  <path class="area" d="@@AREA_PATH@@"/>
+  <path class="curve" d="@@CURVE_PATH@@"/>
+
+  <circle class="dot" cx="@@ZERO_X@@" cy="@@ZERO_Y@@" r="6"/>
+  <circle class="dot" cx="@@TEN_X@@" cy="@@TEN_Y@@" r="6"/>
+  <circle class="dot" cx="@@SIXTY_FOUR_X@@" cy="@@SIXTY_FOUR_Y@@" r="6"/>
+  <circle class="dot" cx="@@MAX_X@@" cy="@@MAX_Y@@" r="6"/>
+
+  <rect class="callout" x="132" y="274" width="158" height="54"/>
+  <text class="small" x="146" y="296">0 steering</text>
+  <text class="formula" x="146" y="316">1.01x floor</text>
+  <path class="arrow" d="M132 306 L116 319"/>
+
+  <rect class="callout" x="188" y="212" width="168" height="54"/>
+  <text class="small" x="202" y="234">10 steering</text>
+  <text class="formula" x="202" y="254">3.30x multiplier</text>
+  <path class="arrow" d="M188 242 L170 229"/>
+
+  <rect class="callout" x="510" y="154" width="168" height="54"/>
+  <text class="small" x="524" y="176">64 steering</text>
+  <text class="formula" x="524" y="196">5.16x multiplier</text>
+  <path class="arrow" d="M510 184 L486 155"/>
+
+  <rect class="callout" x="690" y="104" width="180" height="54"/>
+  <text class="small" x="704" y="126">127 steering</text>
+  <text class="formula" x="704" y="146">5.84x multiplier</text>
+  <path class="arrow" d="M850 150 L850 128"/>
+
+  <text class="small" x="278" y="404">The multiplier is applied to squared steering error before taking the batch mean.</text>
+</svg>"""
+    for token, value in {
+        "@@AREA_PATH@@": area_path,
+        "@@CURVE_PATH@@": curve_path,
+        "@@ZERO_X@@": f"{marker_points['zero'][0]:.1f}",
+        "@@ZERO_Y@@": f"{marker_points['zero'][1]:.1f}",
+        "@@TEN_X@@": f"{marker_points['ten'][0]:.1f}",
+        "@@TEN_Y@@": f"{marker_points['ten'][1]:.1f}",
+        "@@SIXTY_FOUR_X@@": f"{marker_points['sixty_four'][0]:.1f}",
+        "@@SIXTY_FOUR_Y@@": f"{marker_points['sixty_four'][1]:.1f}",
+        "@@MAX_X@@": f"{marker_points['max'][0]:.1f}",
+        "@@MAX_Y@@": f"{marker_points['max'][1]:.1f}",
+    }.items():
+        loss_weight_curve_svg = loss_weight_curve_svg.replace(token, value)
+
     write_svg(out_dir / "training-pipeline.svg", training_pipeline_svg)
     write_svg(out_dir / "resampling-balance.svg", resampling_balance_svg)
+    write_svg(out_dir / "loss-weight-curve.svg", loss_weight_curve_svg)
 
 
 def assert_asset_sizes(paths: Iterable[Path]) -> None:

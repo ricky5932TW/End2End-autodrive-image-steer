@@ -104,7 +104,22 @@ Training notebook 的核心問題很實際：收集到的大部分駕駛畫面�
 
 自訂的 `StdOutlierActionBatchSampler` 會把 action value 距離 train-set mean 超過 `3 std` 的 row 標成 high-action examples。這些資料只佔 train split 的 7.7%（`5,060 / 65,648`），但每個 1,024 筆的 training batch 會刻意抽 512 筆來自這個 high-action group。這樣左/右修正與彎道資料在訓練中出現的頻率，就不會被大量直線資料淹沒。
 
-目前 checkpoint path 使用 MobileNetV3-Small visual backbone，搭配 AdamW、warmup、cosine restarts、early stopping，以及 steering-only weighted MSE。較大的絕對 steering target 會被賦予更高權重。Notebook 中 accel/brake loss 目前是註解掉的；runtime 這條路徑會固定 accel/brake output，主要學習 steering。
+Loss 設定：
+
+目前 active objective 是 steering-only weighted MSE。Notebook 中實際使用的 loss 是：
+
+```text
+steer_loss = mean((pred_steer - target_steer)^2 * weight)
+weight = 1 + max(log(abs(target_steer)), 0.01)
+```
+
+`weight` 會乘在 squared steering error 上；`target_steer` 接近 0 時有 floor，最低權重是 `1.01x`，所以直線樣本仍然會提供 loss。當絕對 steering target 變大時，miss 掉彎道或大角度修正的錯誤會被放大，例如 `abs(target_steer)=10` 約為 `3.30x`、`64` 約為 `5.16x`、`127` 約為 `5.84x`。
+
+<p align="center">
+  <img src="docs/assets/loss-weight-curve.svg" alt="Steering loss weight curve showing the multiplier rising from 1.01x near zero steering to 5.84x at full steering" width="780">
+</p>
+
+目前 checkpoint path 使用 MobileNetV3-Small visual backbone，搭配 AdamW、warmup、cosine restarts 與 early stopping。Train/validation total loss、early stopping 與 best checkpoint 選擇都以 steering loss 為準。`accel=0.5`、`brake=0.0` 是目前 steering-only path 的 placeholder output，因為這條路徑先不針對油門與煞車行為訓練；Notebook 中的 `accel_loss` / `brake_loss` MSE 保留但目前註解掉。
 
 和 NVIDIA DAVE-2 / end-to-end driving 的對照：
 
