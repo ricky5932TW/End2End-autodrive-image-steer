@@ -11,9 +11,6 @@ import re
 import subprocess
 from typing import Iterable
 
-from PIL import Image
-import imageio_ffmpeg
-
 
 MAX_VIDEO_BYTES = 10 * 1024 * 1024
 MAX_GIF_BYTES = 10 * 1024 * 1024
@@ -233,6 +230,8 @@ def export_gif_preview(ffmpeg: str, source: Path, output: Path) -> None:
 
 
 def compress_jpeg(input_path: Path, output_path: Path, max_bytes: int) -> None:
+    from PIL import Image
+
     with Image.open(input_path) as image:
         image = image.convert("RGB")
         for quality in (88, 82, 76, 70, 64, 58, 52, 46):
@@ -247,6 +246,8 @@ def compress_jpeg(input_path: Path, output_path: Path, max_bytes: int) -> None:
 
 
 def export_clips(source_dir: Path, out_dir: Path, tail_trim_s: float) -> None:
+    import imageio_ffmpeg
+
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     for spec in DEFAULT_CLIPS:
         source = source_dir / spec.source
@@ -340,6 +341,8 @@ def export_gradcam_montage(
     sample_count: int = 5,
     max_width: int = 1120,
 ) -> None:
+    from PIL import Image
+
     source_path = output_path.with_suffix(".source.png")
     source_path.write_bytes(png_bytes)
     with Image.open(source_path) as image:
@@ -382,7 +385,7 @@ def write_svg(path: Path, content: str) -> None:
 
 def export_training_diagrams(out_dir: Path) -> None:
     training_pipeline_svg = """\
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="360" viewBox="0 0 1120 360" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="400" viewBox="0 0 1120 400" role="img" aria-labelledby="title desc">
   <title id="title">Training pipeline for the Forza image-to-steering model</title>
   <desc id="desc">A deterministic diagram showing data collection, filtering, crop, augmentation, balanced sampling, MobileNetV3-Small, and steering loss.</desc>
   <defs>
@@ -402,57 +405,59 @@ def export_training_diagrams(out_dir: Path) -> None:
       .arrow { stroke: #4b5563; stroke-width: 2; fill: none; marker-end: url(#arrow); }
     </style>
   </defs>
-  <rect class="bg" x="0" y="0" width="1120" height="360" rx="14"/>
+  <rect class="bg" x="0" y="0" width="1120" height="400" rx="14"/>
   <text class="title" x="40" y="48">Training Pipeline</text>
-  <text class="subtitle" x="40" y="74">Forza gameplay turns into a steering-supervised visual controller, with augmentation and resampling to reduce straight-driving bias.</text>
+  <text class="subtitle" x="40" y="74">Forza gameplay becomes steering-supervised training data.</text>
+  <text class="subtitle" x="40" y="96">Augmentation and balanced sampling reduce straight-driving bias before MobileNetV3 learns steering.</text>
 
-  <rect class="box" x="40" y="118" width="135" height="116"/>
-  <text class="label" x="60" y="148">Collect</text>
-  <text class="small" x="60" y="174">8 sessions</text>
-  <text class="small" x="60" y="196">screen + UDP</text>
-  <text class="metric" x="60" y="218">96,182 rows</text>
+  <rect class="box" x="40" y="136" width="135" height="126"/>
+  <text class="label" x="60" y="166">Collect</text>
+  <text class="small" x="60" y="194">8 sessions</text>
+  <text class="small" x="60" y="216">screen + UDP</text>
+  <text class="metric" x="60" y="240">96,182 rows</text>
 
-  <path class="arrow" d="M180 176 H218"/>
-  <rect class="box" x="225" y="118" width="135" height="116"/>
-  <text class="label" x="245" y="148">Filter</text>
-  <text class="small" x="245" y="174">Speed &gt; 0</text>
-  <text class="small" x="245" y="196">valid rows only</text>
-  <text class="metric" x="245" y="218">72,942 rows</text>
+  <path class="arrow" d="M180 199 H218"/>
+  <rect class="box" x="225" y="136" width="135" height="126"/>
+  <text class="label" x="245" y="166">Filter</text>
+  <text class="small" x="245" y="194">Speed &gt; 0</text>
+  <text class="small" x="245" y="216">valid rows only</text>
+  <text class="metric" x="245" y="240">72,942 rows</text>
 
-  <path class="arrow" d="M365 176 H403"/>
-  <rect class="box" x="410" y="118" width="135" height="116"/>
-  <text class="label" x="430" y="148">Preprocess</text>
-  <text class="small" x="430" y="174">EMA alpha 0.70</text>
-  <text class="small" x="430" y="196">crop road band</text>
-  <text class="metric" x="430" y="218">(0,75,320,122)</text>
+  <path class="arrow" d="M365 199 H403"/>
+  <rect class="box" x="410" y="136" width="135" height="126"/>
+  <text class="label" x="430" y="166">Preprocess</text>
+  <text class="small" x="430" y="194">EMA alpha 0.70</text>
+  <text class="small" x="430" y="216">crop road band</text>
+  <text class="metric" x="430" y="240">(0,75,320,122)</text>
 
-  <path class="arrow" d="M550 176 H588"/>
-  <rect class="box-accent" x="595" y="118" width="135" height="116"/>
-  <text class="label" x="615" y="148">Augment</text>
-  <text class="small" x="615" y="174">flip + steer sign</text>
-  <text class="small" x="615" y="196">color, affine</text>
-  <text class="small" x="615" y="218">noise + erasing</text>
+  <path class="arrow" d="M550 199 H588"/>
+  <rect class="box-accent" x="595" y="136" width="135" height="126"/>
+  <text class="label" x="615" y="166">Augment</text>
+  <text class="small" x="615" y="194">flip + steer sign</text>
+  <text class="small" x="615" y="216">color, affine</text>
+  <text class="small" x="615" y="240">noise + erasing</text>
 
-  <path class="arrow" d="M735 176 H773"/>
-  <rect class="box-warm" x="780" y="118" width="135" height="116"/>
-  <text class="label" x="800" y="148">Resample</text>
-  <text class="small" x="800" y="174">&gt; 3 std actions</text>
-  <text class="small" x="800" y="196">512 / 1024 batch</text>
-  <text class="metric" x="800" y="218">rare rows boosted</text>
+  <path class="arrow" d="M735 199 H773"/>
+  <rect class="box-warm" x="780" y="136" width="135" height="126"/>
+  <text class="label" x="800" y="166">Resample</text>
+  <text class="small" x="800" y="194">&gt; 3 std actions</text>
+  <text class="small" x="800" y="216">512 / 1024 batch</text>
+  <text class="metric" x="800" y="240">rare rows boosted</text>
 
-  <path class="arrow" d="M920 176 H958"/>
-  <rect class="box" x="965" y="118" width="115" height="116"/>
-  <text class="label" x="985" y="148">Train</text>
-  <text class="small" x="985" y="174">MobileNetV3</text>
-  <text class="small" x="985" y="196">AdamW + cosine</text>
-  <text class="metric" x="985" y="218">steering loss</text>
+  <path class="arrow" d="M920 199 H958"/>
+  <rect class="box" x="965" y="136" width="115" height="126"/>
+  <text class="label" x="985" y="166">Train</text>
+  <text class="small" x="985" y="194">MobileNetV3</text>
+  <text class="small" x="985" y="216">AdamW + cosine</text>
+  <text class="metric" x="985" y="240">steering loss</text>
 
-  <rect class="box" x="225" y="270" width="690" height="48"/>
-  <text class="small" x="248" y="300">90/10 train-validation split, ImageNet normalization, early stopping, best checkpoint saved as best_model.pth.</text>
+  <rect class="box" x="225" y="306" width="690" height="58"/>
+  <text class="small" x="248" y="331">90/10 train-validation split, ImageNet normalization, and early stopping.</text>
+  <text class="small" x="248" y="351">Best checkpoint is saved as best_model.pth.</text>
 </svg>"""
 
     resampling_balance_svg = """\
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="360" viewBox="0 0 960 360" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" role="img" aria-labelledby="title desc">
   <title id="title">Resampling reduces straight-driving bias</title>
   <desc id="desc">A bar chart comparing rare high-steering action rows in the raw train split with their share in a balanced training batch.</desc>
   <defs>
@@ -470,33 +475,34 @@ def export_training_diagrams(out_dir: Path) -> None:
       .legend { font: 13px Arial, sans-serif; fill: #334155; }
     </style>
   </defs>
-  <rect class="bg" x="0" y="0" width="960" height="360" rx="14"/>
+  <rect class="bg" x="0" y="0" width="960" height="400" rx="14"/>
   <text class="title" x="44" y="48">Resampling Strategy</text>
-  <text class="subtitle" x="44" y="74">Most driving frames are straight or low-steering. Each training batch deliberately contains many high-action examples.</text>
+  <text class="subtitle" x="44" y="74">Most driving frames are straight or low-steering.</text>
+  <text class="subtitle" x="44" y="96">Balanced batches keep high-action examples visible to the optimizer.</text>
 
-  <line class="axis" x1="110" y1="282" x2="850" y2="282"/>
-  <line class="axis" x1="110" y1="110" x2="110" y2="282"/>
+  <line class="axis" x1="150" y1="286" x2="810" y2="286"/>
+  <line class="axis" x1="150" y1="128" x2="150" y2="286"/>
 
-  <text class="label" x="168" y="312">Raw train split</text>
-  <text class="small" x="168" y="332">5,060 / 65,648 rows over 3 std</text>
-  <rect class="common" x="190" y="128" width="170" height="154" rx="8"/>
-  <rect class="rare" x="190" y="269" width="170" height="13" rx="4"/>
-  <text class="pct" x="242" y="116">7.7%</text>
-  <text class="small" x="210" y="158">common steering</text>
-  <text class="small" x="215" y="263">rare action rows</text>
+  <text class="pct" x="248" y="124">7.7%</text>
+  <rect class="common" x="210" y="136" width="160" height="150" rx="8"/>
+  <rect class="rare" x="210" y="274" width="160" height="12" rx="4"/>
+  <text class="small" x="226" y="166">common steering</text>
+  <text class="small" x="228" y="268">rare action rows</text>
+  <text class="label" x="185" y="316">Raw train split</text>
+  <text class="small" x="160" y="338">5,060 / 65,648 rows over 3 std</text>
 
-  <text class="label" x="568" y="312">Training batch</text>
-  <text class="small" x="568" y="332">512 / 1024 rows sampled from outliers</text>
-  <rect class="common" x="590" y="128" width="170" height="154" rx="8"/>
-  <rect class="batch" x="590" y="205" width="170" height="77" rx="8"/>
-  <text class="pct" x="640" y="116">50%</text>
-  <text class="small" x="608" y="158">regular rows</text>
-  <text class="small" x="612" y="250">rare-action rows</text>
+  <text class="pct" x="646" y="124">50%</text>
+  <rect class="common" x="590" y="136" width="160" height="150" rx="8"/>
+  <rect class="batch" x="590" y="211" width="160" height="75" rx="8"/>
+  <text class="small" x="610" y="166">regular rows</text>
+  <text class="small" x="606" y="254">rare-action rows</text>
+  <text class="label" x="568" y="316">Training batch</text>
+  <text class="small" x="540" y="338">512 / 1024 rows sampled from outliers</text>
 
-  <rect class="rare" x="112" y="42" width="14" height="14" rx="3"/>
-  <text class="legend" x="134" y="54">Raw rare-action share</text>
-  <rect class="batch" x="290" y="42" width="14" height="14" rx="3"/>
-  <text class="legend" x="312" y="54">Batch rare-action share</text>
+  <rect class="rare" x="264" y="362" width="14" height="14" rx="3"/>
+  <text class="legend" x="286" y="374">Raw rare-action share</text>
+  <rect class="batch" x="488" y="362" width="14" height="14" rx="3"/>
+  <text class="legend" x="510" y="374">Batch rare-action share</text>
 </svg>"""
 
     write_svg(out_dir / "training-pipeline.svg", training_pipeline_svg)

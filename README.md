@@ -1,5 +1,12 @@
 # End2End Autodrive Image-Steer
 
+[![GitHub Repo stars](https://img.shields.io/github/stars/ricky5932TW/End2End-autodrive-image-steer?style=flat-square&label=stars)](https://github.com/ricky5932TW/End2End-autodrive-image-steer/stargazers)
+![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-MobileNetV3-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)
+![Windows live control](https://img.shields.io/badge/Windows-live%20control-0078D4?style=flat-square&logo=windows&logoColor=white)
+![Forza Dash UDP](https://img.shields.io/badge/Forza-Dash%20UDP-111827?style=flat-square)
+![End-to-end steering](https://img.shields.io/badge/End--to--end-image%20steering-2563EB?style=flat-square)
+
 [中文](README.zh-TW.md)
 
 Image-to-steering imitation learning for Forza: collect driving data quickly in a rich game environment, train an end-to-end visual controller, and run it live through a virtual Xbox controller with telemetry feedback.
@@ -14,7 +21,7 @@ Image-to-steering imitation learning for Forza: collect driving data quickly in 
   <a href="docs/assets/live-debug.mp4">Open the 9s live debug MP4</a>
 </p>
 
-## Why Games
+## 🎮 Why Games
 
 Real autonomous-driving data is expensive to collect, hard to label, and difficult to repeat under controlled conditions. Racing games offer a practical academic sandbox: dense visual scenes, changing lighting, track geometry, tire limits, telemetry, and fast resets.
 
@@ -22,7 +29,7 @@ This project uses racing-game data for supervised end-to-end driving, with faste
 
 Sony AI's GT Sophy is a strong motivation for taking racing games seriously as research environments: the Nature paper shows deep reinforcement learning agents trained in Gran Turismo can handle non-linear race-car control and multi-agent tactics at champion level. This repo explores a smaller related question: how far can a practical image-steering pipeline go when the game is used as the data engine?
 
-## Research Lineage
+## 🧭 Research Lineage
 
 | Year | Work | Why it matters here |
 | --- | --- | --- |
@@ -32,7 +39,7 @@ Sony AI's GT Sophy is a strong motivation for taking racing games seriously as r
 | 2022 | Sony AI GT Sophy | Deep RL in Gran Turismo showed that racing games can support high-performance control research in complex, rule-constrained environments. |
 | 2026 | This repo | Forza is used as a fast data-collection and evaluation loop for end-to-end image steering. |
 
-## Demo Clips
+## 🎞️ Demo Clips
 
 These are curated, muted, GitHub-safe clips generated from local recordings. The GIF previews render inline on GitHub; click a preview or MP4 link to open the original clip. Raw videos remain ignored in `media/`.
 
@@ -41,7 +48,7 @@ These are curated, muted, GitHub-safe clips generated from local recordings. The
 | <a href="docs/assets/live-debug.mp4"><img src="docs/assets/live-debug-preview.gif" alt="Live debug animated preview" width="280"></a> | <a href="docs/assets/long-run.mp4"><img src="docs/assets/long-run-preview.gif" alt="Long run animated preview" width="280"></a> | <a href="docs/assets/short-control.mp4"><img src="docs/assets/short-control-preview.gif" alt="Short control animated preview" width="280"></a> |
 | [Open MP4](docs/assets/live-debug.mp4) | [Open MP4](docs/assets/long-run.mp4) | [Open MP4](docs/assets/short-control.mp4) |
 
-## System Overview
+## 🧩 System Overview
 
 ```mermaid
 flowchart LR
@@ -71,7 +78,7 @@ Core implementation:
 - `forza_autodrive/steering_control.py`: PID correction, correction limiting, rate limiting, and optional scalar Kalman filtering
 - `load_data.ipynb`: training, validation plots, prediction inspection, and Grad-CAM/Score-CAM analysis
 
-## Training, Augmentation, and Resampling
+## 🧪 Training, Augmentation, and Resampling
 
 The training notebook is organized around one practical problem: most collected driving frames are easy straight or low-steering moments, while the model needs enough left turns, right turns, recoveries, and high-curvature examples to stay useful at runtime.
 
@@ -111,7 +118,7 @@ Comparison with NVIDIA DAVE-2 / end-to-end driving:
 
 For NVIDIA's original training and architecture figures, see the [paper](https://arxiv.org/abs/1604.07316) and [PDF](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf). The diagrams in this README are generated from this repo's notebook statistics.
 
-## Interpretability
+## 🔎 Interpretability
 
 The notebook includes Score-CAM/Grad-CAM style checks for the trained steering model.
 
@@ -129,11 +136,14 @@ Shallow-layer attention is more local and repeatedly lights up road texture, lan
 
 This qualitatively echoes the NVIDIA end-to-end driving paper: with steering supervision alone, a CNN can learn internal road features from driving data. In this repo, the observation is a sanity check for what the Forza model appears to attend to.
 
-## Quick Start
+## 💻 Quick Start
 
 ### 1. Runtime setup
 
-Install the runtime dependencies in your Python environment. The exact PyTorch command depends on your CUDA version.
+Install the runtime dependencies in your Python environment.
+
+> [!NOTE]
+> Choose the PyTorch wheel for your local CUDA or CPU setup; the command below is the simple pip form used as a starting point.
 
 ```powershell
 py -m pip install torch torchvision numpy pillow opencv-python dxcam keyboard vgamepad pytorch-grad-cam
@@ -169,7 +179,8 @@ py -m forza_autodrive.drive --model best_model.pth --no-controller --debug-windo
 
 ### 5. Live driving
 
-Use this only when the game window, telemetry, and emergency stop behavior have been checked.
+> [!CAUTION]
+> Before arming live control, verify telemetry is updating, the Forza window is focused, the virtual controller state is understood, and `F8` emergency stop works.
 
 ```powershell
 py -m forza_autodrive.drive --model best_model.pth --start-armed
@@ -189,7 +200,7 @@ py -m forza_autodrive.drive --steer-scale 2.0 --steer-feedback pid --steer-kalma
 
 Steering feedback tuning starts with `--steer-scale`, because the model target and in-game stick response have a nonlinear mapping. If the car ignores small corrections, scale may be too low or the command may be inside the gamepad/game deadzone. If it oscillates, lower `--steer-scale`, lower PID gains, reduce `--steer-pid-correction-limit`, or enable `--steer-kalman` so PID follows a less noisy UDP steering measurement. `--steer-smoothing` and `--steer-pid-correction-rate-limit` are useful when the model is visually correct on average while too twitchy frame to frame.
 
-## README Asset Workflow
+## 📦 README Asset Workflow
 
 The raw recordings in `media/` and model checkpoints are intentionally ignored. Publish only compact README assets:
 
@@ -208,7 +219,7 @@ The exporter:
 
 GitHub warns above 50 MiB and blocks files above 100 MiB in regular Git repositories, so `media/` and `*.pth` stay local unless they are published through Releases or Git LFS.
 
-## References
+## 📚 References
 
 - [CMU Navlab](https://www.cs.cmu.edu/afs/cs/project/alv/www/)
 - [DAVE: Autonomous Off-Road Vehicle Control using End-to-End Learning](https://cs.nyu.edu/~yann/research/dave/)

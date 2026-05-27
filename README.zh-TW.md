@@ -1,5 +1,12 @@
 # End2End Autodrive Image-Steer
 
+[![GitHub Repo stars](https://img.shields.io/github/stars/ricky5932TW/End2End-autodrive-image-steer?style=flat-square&label=stars)](https://github.com/ricky5932TW/End2End-autodrive-image-steer/stargazers)
+![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-MobileNetV3-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)
+![Windows live control](https://img.shields.io/badge/Windows-live%20control-0078D4?style=flat-square&logo=windows&logoColor=white)
+![Forza Dash UDP](https://img.shields.io/badge/Forza-Dash%20UDP-111827?style=flat-square)
+![End-to-end steering](https://img.shields.io/badge/End--to--end-image%20steering-2563EB?style=flat-square)
+
 [English README](README.md)
 
 這是一個以 Forza 為資料收集與測試環境的 image-to-steering imitation learning 專案：用遊戲快速收集駕駛影像與遙測資料，訓練端到端視覺控制模型，再透過虛擬 Xbox 控制器與方向盤回饋在遊戲中即時駕駛。
@@ -14,7 +21,7 @@
   <a href="docs/assets/live-debug.mp4">開啟 9 秒 live debug MP4</a>
 </p>
 
-## 為什麼用遊戲
+## 🎮 為什麼用遊戲
 
 真實自駕資料昂貴、難標註，也很難在相同條件下重複實驗。賽車遊戲提供一個實用的學術沙盒：豐富視覺場景、不同光線、賽道幾何、輪胎極限、遙測資料，以及快速重置。
 
@@ -22,7 +29,7 @@
 
 Sony AI 的 GT Sophy 是重要動機：Nature 論文展示了 Gran Turismo 中的深度強化學習 agent 可以處理非線性賽車控制與多人競速策略，甚至達到冠軍級表現。本 repo 探索的是一個比較小但相關的問題：如果把遊戲當成資料引擎，一個實用的影像轉方向盤 pipeline 可以做到什麼程度？
 
-## 研究脈絡
+## 🧭 研究脈絡
 
 | 年份 | 工作 | 與本專案的關係 |
 | --- | --- | --- |
@@ -32,7 +39,7 @@ Sony AI 的 GT Sophy 是重要動機：Nature 論文展示了 Gran Turismo 中�
 | 2022 | Sony AI GT Sophy | Gran Turismo 中的深度強化學習證明賽車遊戲能支撐高性能、複雜規則下的控制研究。 |
 | 2026 | This repo | 使用 Forza 建立快速資料收集與端到端 image steering 評估迴圈。 |
 
-## 示範片段
+## 🎞️ 示範片段
 
 以下是從本機錄影剪出的 GitHub-safe 無聲短片。GIF 預覽可以在 GitHub README 直接動起來；點縮圖或 MP4 連結可開啟原始短片。原始大影片保留在本機 `media/`，不進 Git。
 
@@ -41,7 +48,7 @@ Sony AI 的 GT Sophy 是重要動機：Nature 論文展示了 Gran Turismo 中�
 | <a href="docs/assets/live-debug.mp4"><img src="docs/assets/live-debug-preview.gif" alt="Live debug animated preview" width="280"></a> | <a href="docs/assets/long-run.mp4"><img src="docs/assets/long-run-preview.gif" alt="Long run animated preview" width="280"></a> | <a href="docs/assets/short-control.mp4"><img src="docs/assets/short-control-preview.gif" alt="Short control animated preview" width="280"></a> |
 | [開啟 MP4](docs/assets/live-debug.mp4) | [開啟 MP4](docs/assets/long-run.mp4) | [開啟 MP4](docs/assets/short-control.mp4) |
 
-## 系統架構
+## 🧩 系統架構
 
 ```mermaid
 flowchart LR
@@ -71,7 +78,7 @@ Runtime steering 使用 feedback-control loop。模型預測 normalized steering
 - `forza_autodrive/steering_control.py`: PID correction、correction limiting、rate limiting 與 optional scalar Kalman filtering
 - `load_data.ipynb`: training、validation plots、prediction inspection、Grad-CAM/Score-CAM analysis
 
-## 訓練、資料擴增與重採樣
+## 🧪 訓練、資料擴增與重採樣
 
 Training notebook 的核心問題很實際：收集到的大部分駕駛畫面都是直線或小角度 steering，但模型在實際控制時需要看過足夠多的左彎、右彎、修正與高曲率案例，才不會只學到「一直直走」。
 
@@ -111,7 +118,7 @@ Training notebook 的核心問題很實際：收集到的大部分駕駛畫面�
 
 NVIDIA 原始的 training 與 architecture figures 請看 [paper](https://arxiv.org/abs/1604.07316) 與 [PDF](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf)。這份 README 的圖是從本 repo notebook 統計資料產生的 diagram。
 
-## 可解釋性觀察
+## 🔎 可解釋性觀察
 
 Notebook 中包含訓練後 steering model 的 Score-CAM/Grad-CAM 類型檢查。
 
@@ -129,11 +136,14 @@ Notebook 中包含訓練後 steering model 的 Score-CAM/Grad-CAM 類型檢查�
 
 這和 NVIDIA 端到端自駕論文中的觀察相呼應：只用 steering supervision，CNN 也可能從駕駛資料學到道路相關內部特徵。在這個 repo 中，這是對 Forza 模型注意區域的定性 sanity check。
 
-## Quick Start
+## 💻 Quick Start
 
 ### 1. Runtime setup
 
-先安裝 runtime dependencies。PyTorch 指令可依你的 CUDA 版本調整。
+先安裝 runtime dependencies。
+
+> [!NOTE]
+> PyTorch wheel 需要依本機 CUDA 或 CPU 環境選擇；下方指令是簡化版 pip 安裝起點。
 
 ```powershell
 py -m pip install torch torchvision numpy pillow opencv-python dxcam keyboard vgamepad pytorch-grad-cam
@@ -169,7 +179,8 @@ py -m forza_autodrive.drive --model best_model.pth --no-controller --debug-windo
 
 ### 5. Live driving
 
-確認遊戲視窗、telemetry 與 emergency stop 都正常後再使用。
+> [!CAUTION]
+> 啟動 live control 前，請先確認 telemetry 持續更新、Forza 視窗焦點正確、virtual controller 狀態可預期，而且 `F8` emergency stop 可用。
 
 ```powershell
 py -m forza_autodrive.drive --model best_model.pth --start-armed
@@ -189,7 +200,7 @@ py -m forza_autodrive.drive --steer-scale 2.0 --steer-feedback pid --steer-kalma
 
 Steering feedback 調參通常先從 `--steer-scale` 開始，因為模型 target 和遊戲內 stick response 是非線性對應關係。如果車子吃不到小修正，可能是 scale 太低，或 command 還在 gamepad/game deadzone 裡；如果車身開始左右震盪，可以降低 `--steer-scale`、降低 PID gains、降低 `--steer-pid-correction-limit`，或開 `--steer-kalman` 讓 PID 看到比較不吵的 UDP steering measurement。當模型平均方向是對的，frame-to-frame 太抖時，`--steer-smoothing` 和 `--steer-pid-correction-rate-limit` 會比較有幫助。
 
-## README Asset Workflow
+## 📦 README Asset Workflow
 
 原始錄影 `media/` 和模型 checkpoint 都刻意忽略。要發布到 README，只追蹤壓縮後的小素材：
 
@@ -208,7 +219,7 @@ Exporter 會：
 
 GitHub 一般 Git repo 中超過 50 MiB 會警告，超過 100 MiB 會被阻擋，所以 `media/` 與 `*.pth` 保留本機，除非改用 Releases 或 Git LFS 發布。
 
-## References
+## 📚 References
 
 - [CMU Navlab](https://www.cs.cmu.edu/afs/cs/project/alv/www/)
 - [DAVE: Autonomous Off-Road Vehicle Control using End-to-End Learning](https://cs.nyu.edu/~yann/research/dave/)
