@@ -12,13 +12,13 @@
 Image-to-steering imitation learning for Forza: collect driving data quickly in a rich game environment, train an end-to-end visual controller, and run it live through a virtual Xbox controller with telemetry feedback.
 
 <p align="center">
-  <a href="docs/assets/live-debug.mp4">
-    <img src="docs/assets/live-debug-preview.gif" alt="Live Forza debug view with raw frame, model input, Grad-CAM overlay, and steering bars" width="640">
+  <a href="docs/assets/test-1.mp4">
+    <img src="docs/assets/test-1-preview.gif" alt="Test 1 demo animated preview" width="640">
   </a>
 </p>
 
 <p align="center">
-  <a href="docs/assets/live-debug.mp4">Open the 9s live debug MP4</a>
+  <a href="docs/assets/test-1.mp4">Open Test 1 demo MP4</a>
 </p>
 
 ## 🎮 Why Games
@@ -43,10 +43,10 @@ Sony AI's GT Sophy is a strong motivation for taking racing games seriously as r
 
 These are curated, muted, GitHub-safe clips generated from local recordings. The GIF previews render inline on GitHub; click a preview or MP4 link to open the original clip. Raw videos remain ignored in `media/`.
 
-| Live Debug | Long Run | Short Control |
+| Test 1 | Test 2 | Test 3 |
 | --- | --- | --- |
-| <a href="docs/assets/live-debug.mp4"><img src="docs/assets/live-debug-preview.gif" alt="Live debug animated preview" width="280"></a> | <a href="docs/assets/long-run.mp4"><img src="docs/assets/long-run-preview.gif" alt="Long run animated preview" width="280"></a> | <a href="docs/assets/short-control.mp4"><img src="docs/assets/short-control-preview.gif" alt="Short control animated preview" width="280"></a> |
-| [Open MP4](docs/assets/live-debug.mp4) | [Open MP4](docs/assets/long-run.mp4) | [Open MP4](docs/assets/short-control.mp4) |
+| <a href="docs/assets/test-1.mp4"><img src="docs/assets/test-1-preview.gif" alt="Test 1 demo animated preview" width="280"></a> | <a href="docs/assets/test-2.mp4"><img src="docs/assets/test-2-preview.gif" alt="Test 2 demo animated preview" width="280"></a> | <a href="docs/assets/test-3.mp4"><img src="docs/assets/test-3-preview.gif" alt="Test 3 demo animated preview" width="280"></a> |
+| [Open MP4](docs/assets/test-1.mp4) | [Open MP4](docs/assets/test-2.mp4) | [Open MP4](docs/assets/test-3.mp4) |
 
 ## 🧩 System Overview
 

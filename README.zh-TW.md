@@ -12,13 +12,13 @@
 這是一個以 Forza 為資料收集與測試環境的 image-to-steering imitation learning 專案：用遊戲快速收集駕駛影像與遙測資料，訓練端到端視覺控制模型，再透過虛擬 Xbox 控制器與方向盤回饋在遊戲中即時駕駛。
 
 <p align="center">
-  <a href="docs/assets/live-debug.mp4">
-    <img src="docs/assets/live-debug-preview.gif" alt="Forza live debug view" width="640">
+  <a href="docs/assets/test-1.mp4">
+    <img src="docs/assets/test-1-preview.gif" alt="Test 1 demo animated preview" width="640">
   </a>
 </p>
 
 <p align="center">
-  <a href="docs/assets/live-debug.mp4">開啟 9 秒 live debug MP4</a>
+  <a href="docs/assets/test-1.mp4">開啟 Test 1 demo MP4</a>
 </p>
 
 ## 🎮 為什麼用遊戲
@@ -43,10 +43,10 @@ Sony AI 的 GT Sophy 是重要動機：Nature 論文展示了 Gran Turismo 中�
 
 以下是從本機錄影剪出的 GitHub-safe 無聲短片。GIF 預覽可以在 GitHub README 直接動起來；點縮圖或 MP4 連結可開啟原始短片。原始大影片保留在本機 `media/`，不進 Git。
 
-| Live Debug | Long Run | Short Control |
+| Test 1 | Test 2 | Test 3 |
 | --- | --- | --- |
-| <a href="docs/assets/live-debug.mp4"><img src="docs/assets/live-debug-preview.gif" alt="Live debug animated preview" width="280"></a> | <a href="docs/assets/long-run.mp4"><img src="docs/assets/long-run-preview.gif" alt="Long run animated preview" width="280"></a> | <a href="docs/assets/short-control.mp4"><img src="docs/assets/short-control-preview.gif" alt="Short control animated preview" width="280"></a> |
-| [開啟 MP4](docs/assets/live-debug.mp4) | [開啟 MP4](docs/assets/long-run.mp4) | [開啟 MP4](docs/assets/short-control.mp4) |
+| <a href="docs/assets/test-1.mp4"><img src="docs/assets/test-1-preview.gif" alt="Test 1 demo animated preview" width="280"></a> | <a href="docs/assets/test-2.mp4"><img src="docs/assets/test-2-preview.gif" alt="Test 2 demo animated preview" width="280"></a> | <a href="docs/assets/test-3.mp4"><img src="docs/assets/test-3-preview.gif" alt="Test 3 demo animated preview" width="280"></a> |
+| [開啟 MP4](docs/assets/test-1.mp4) | [開啟 MP4](docs/assets/test-2.mp4) | [開啟 MP4](docs/assets/test-3.mp4) |
 
 ## 🧩 系統架構
 

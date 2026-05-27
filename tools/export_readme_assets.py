@@ -31,25 +31,25 @@ class ClipSpec:
 
 DEFAULT_CLIPS = (
     ClipSpec(
-        name="live-debug",
-        source="Forza debug 2026-05-26 11-34-01.mp4",
-        start="00:00:05",
+        name="test-1",
+        source="ScreenRecording_05-25-2026 22-02-14_1.mov",
+        start="00:00:00",
         duration_s=10.0,
         poster_at_s=3.0,
     ),
     ClipSpec(
-        name="long-run",
-        source="ScreenRecording_05-25-2026 23-07-27_1.MP4",
-        start="00:00:20",
-        duration_s=12.0,
-        poster_at_s=4.0,
+        name="test-2",
+        source="ScreenRecording_05-25-2026 22-14-32_1.MOV",
+        start="00:00:00",
+        duration_s=10.0,
+        poster_at_s=3.0,
     ),
     ClipSpec(
-        name="short-control",
-        source="ScreenRecording_05-25-2026 22-39-39_1.MP4",
-        start="00:00:01",
-        duration_s=8.0,
-        poster_at_s=2.0,
+        name="test-3",
+        source="ScreenRecording_05-25-2026 22-25-23_1.mov",
+        start="00:00:00",
+        duration_s=10.0,
+        poster_at_s=4.0,
     ),
 )
 
