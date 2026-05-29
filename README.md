@@ -11,7 +11,7 @@
 
 This is an image-to-steering imitation learning project that uses Forza as the data collection and evaluation environment. It trains an end-to-end visual steering model from game frames and driving labels, then runs live control through a virtual Xbox controller, Forza Dash UDP telemetry, PID feedback, and optional Kalman filtering.
 
-This README reflects the replanned dataset and the current retraining notebook. The previous README and old assets remain under `old/` as an archive; the current public docs only link to the repository root and `docs/assets/`.
+The current model focuses on steering control: the input is a cropped road image, and the output is a steering target. Throttle and brake are fixed placeholders for now, keeping the experiment centered on visual steering, data balancing, and closed-loop control.
 
 <p align="center">
   <a href="docs/assets/demo-freeway.mp4">
@@ -41,7 +41,7 @@ This project uses Forza for supervised end-to-end driving. The goal is not to cl
 
 ## Demos
 
-These GitHub-safe silent clips are exported from the current recordings in `media/`. GIF previews render directly in the README; click a thumbnail or MP4 link to open the clip.
+These silent clips come from live test recordings. GIFs give a quick preview; click a thumbnail or MP4 link to watch the full clip.
 
 | Freeway | Mountain | Unpaved |
 | --- | --- | --- |
@@ -120,7 +120,7 @@ The multiplier is `1.00x` near zero steering and rises to `10.00x` at full steer
   <img src="docs/assets/loss-weight-curve.svg" alt="Steering loss weight curve showing the multiplier rising from 1x near zero steering to 10x at full steering" width="780">
 </p>
 
-The model uses a MobileNetV3-Small backbone, AdaptiveAvgPool2d `(4,12)`, a 1024-unit head, LayerNorm, SiLU, Dropout, and a `tanh` steering output scaled to `[-127,127]`. Optimization uses AdamW, warmup, CosineAnnealingWarmRestarts, and early stopping. The saved notebook shows training was manually interrupted around epoch 477; the best visible validation steering loss is `72.8778` at epoch 476, so this README treats the checkpoint as the current state rather than claiming full convergence.
+The model uses a MobileNetV3-Small backbone, AdaptiveAvgPool2d `(4,12)`, a 1024-unit head, LayerNorm, SiLU, Dropout, and a `tanh` steering output scaled to `[-127,127]`. Optimization uses AdamW, warmup, CosineAnnealingWarmRestarts, and early stopping. The saved notebook shows training was manually interrupted around epoch 477; the best visible validation steering loss is `72.8778` at epoch 476, so the current checkpoint should be read as a usable experimental result rather than a fully converged final model.
 
 `accel=0.5` and `brake=0.0` are placeholder outputs in the steering-only runtime path. Throttle and brake losses are not part of the active objective right now.
 
@@ -159,7 +159,7 @@ Windows live control requires the ViGEmBus driver. `vgamepad` needs it to create
 
 ### 2. Place the checkpoint
 
-The checkpoint is large and should be published through Git LFS. If it is missing after clone, make sure Git LFS is installed and run `git lfs pull`. Runtime reads:
+The runtime reads the model checkpoint from the repository root:
 
 ```text
 best_model.pth
@@ -206,24 +206,6 @@ py -m forza_autodrive.drive --model best_model.pth --steer-scale 2.0 --steer-fee
 
 Start tuning with `--steer-scale`. If small corrections do not register, the scale may be too low or the command may still be inside the controller/game deadzone. If the car oscillates, reduce `--steer-scale`, lower the PID gains, lower `--steer-pid-correction-limit`, or enable `--steer-kalman` so PID sees a steadier UDP steering measurement.
 
-## README Asset Workflow
-
-Raw recordings in `media/`, notebooks, README media, and model checkpoints are large or binary artifacts and should be published through Git LFS. To regenerate the small README assets:
-
-```powershell
-py -m pip install -r requirements-readme-assets.txt
-py tools/export_readme_assets.py
-```
-
-The exporter:
-
-- Cuts `demo-freeway`, `demo-mountain`, `demo-unpaved`, `demo-night`, and `demo-longrange` from the current `media/` recordings.
-- Writes GitHub-safe MP4 clips, GIF previews, and poster JPGs.
-- Extracts compact CAM montages from `load_data.ipynb`.
-- Generates the updated training pipeline, resampling balance, and loss weight curve SVGs.
-
-GitHub warns on normal Git files above 50 MiB and blocks files above 100 MiB, so `media/`, `*.pth`, `*.ipynb`, videos, GIFs, and JPGs should stay under Git LFS tracking rules.
-
 ## References
 
 - [CMU Navlab](https://www.cs.cmu.edu/afs/cs/project/alv/www/)
@@ -232,4 +214,3 @@ GitHub warns on normal Git files above 50 MiB and blocks files above 100 MiB, so
 - [NVIDIA paper PDF](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf)
 - [Sony AI GT Sophy announcement](https://ai.sony/news/sonyai009)
 - [Nature: Outracing champion Gran Turismo drivers with deep reinforcement learning](https://www.nature.com/articles/s41586-021-04357-7)
-- [GitHub Docs: About large files on GitHub](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)
