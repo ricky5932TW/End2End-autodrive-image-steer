@@ -6,7 +6,6 @@ import argparse
 import base64
 from dataclasses import dataclass
 import json
-import math
 from pathlib import Path
 import re
 import subprocess
@@ -31,23 +30,37 @@ class ClipSpec:
 
 DEFAULT_CLIPS = (
     ClipSpec(
-        name="test-1",
-        source="ScreenRecording_05-25-2026 22-02-14_1.mov",
-        start="00:00:00",
+        name="demo-freeway",
+        source="freeway.mp4",
+        start="00:00:05",
         duration_s=10.0,
         poster_at_s=3.0,
     ),
     ClipSpec(
-        name="test-2",
-        source="ScreenRecording_05-25-2026 22-14-32_1.MOV",
-        start="00:00:00",
+        name="demo-mountain",
+        source="mountain.mp4",
+        start="00:00:20",
         duration_s=10.0,
         poster_at_s=3.0,
     ),
     ClipSpec(
-        name="test-3",
-        source="ScreenRecording_05-25-2026 22-25-23_1.mov",
-        start="00:00:00",
+        name="demo-unpaved",
+        source="unpaved.mp4",
+        start="00:00:20",
+        duration_s=10.0,
+        poster_at_s=4.0,
+    ),
+    ClipSpec(
+        name="demo-night",
+        source="night.mp4",
+        start="00:00:02",
+        duration_s=8.0,
+        poster_at_s=2.0,
+    ),
+    ClipSpec(
+        name="demo-longrange",
+        source="longrange.mp4",
+        start="00:00:10",
         duration_s=10.0,
         poster_at_s=4.0,
     ),
@@ -393,13 +406,12 @@ def export_training_diagrams(out_dir: Path) -> None:
     plot_height = plot_bottom - plot_top
 
     def loss_weight(abs_steer: float) -> float:
-        log_value = math.log(abs_steer) if abs_steer > 0 else float("-inf")
-        return 1.0 + max(log_value, 0.01)
+        return 10 ** (abs_steer / 127.0)
 
     def curve_point(abs_steer: float) -> tuple[float, float]:
         weight = loss_weight(abs_steer)
         x = plot_left + (abs_steer / 127.0) * plot_width
-        y = plot_bottom - ((weight - 1.0) / 5.0) * plot_height
+        y = plot_bottom - ((weight - 1.0) / 9.0) * plot_height
         return x, y
 
     curve_samples = [0.0, 1.0, *[float(value) for value in range(2, 128, 2)], 127.0]
@@ -443,16 +455,16 @@ def export_training_diagrams(out_dir: Path) -> None:
 
   <rect class="box" x="40" y="136" width="135" height="126"/>
   <text class="label" x="60" y="166">Collect</text>
-  <text class="small" x="60" y="194">8 sessions</text>
-  <text class="small" x="60" y="216">screen + UDP</text>
-  <text class="metric" x="60" y="240">96,182 rows</text>
+      <text class="small" x="60" y="194">12 sessions</text>
+      <text class="small" x="60" y="216">screen + UDP</text>
+      <text class="metric" x="60" y="240">52,697 rows</text>
 
   <path class="arrow" d="M180 199 H218"/>
   <rect class="box" x="225" y="136" width="135" height="126"/>
   <text class="label" x="245" y="166">Filter</text>
-  <text class="small" x="245" y="194">Speed &gt; 0</text>
-  <text class="small" x="245" y="216">valid rows only</text>
-  <text class="metric" x="245" y="240">72,942 rows</text>
+      <text class="small" x="245" y="194">Speed &gt; 0</text>
+      <text class="small" x="245" y="216">valid rows only</text>
+      <text class="metric" x="245" y="240">52,015 rows</text>
 
   <path class="arrow" d="M365 199 H403"/>
   <rect class="box" x="410" y="136" width="135" height="126"/>
@@ -471,9 +483,9 @@ def export_training_diagrams(out_dir: Path) -> None:
   <path class="arrow" d="M735 199 H773"/>
   <rect class="box-warm" x="780" y="136" width="135" height="126"/>
   <text class="label" x="800" y="166">Resample</text>
-  <text class="small" x="800" y="194">&gt; 3 std actions</text>
+  <text class="small" x="800" y="194">&gt; 1 std actions</text>
   <text class="small" x="800" y="216">512 / 1024 batch</text>
-  <text class="metric" x="800" y="240">rare rows boosted</text>
+  <text class="metric" x="800" y="240">16.2% boosted</text>
 
   <path class="arrow" d="M920 199 H958"/>
   <rect class="box" x="965" y="136" width="115" height="126"/>
@@ -484,13 +496,13 @@ def export_training_diagrams(out_dir: Path) -> None:
 
   <rect class="box" x="225" y="306" width="690" height="58"/>
   <text class="small" x="248" y="331">90/10 train-validation split, ImageNet normalization, and early stopping.</text>
-  <text class="small" x="248" y="351">Best checkpoint is saved as best_model.pth.</text>
+  <text class="small" x="248" y="351">Image-only steering checkpoint is saved as best_model.pth.</text>
 </svg>"""
 
     resampling_balance_svg = """\
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" role="img" aria-labelledby="title desc">
   <title id="title">Resampling reduces straight-driving bias</title>
-  <desc id="desc">A bar chart comparing rare high-steering action rows in the raw train split with their share in a balanced training batch.</desc>
+  <desc id="desc">A bar chart comparing one-standard-deviation action outlier rows in the raw train split with their share in a balanced training batch.</desc>
   <defs>
     <style>
       .bg { fill: #f8fafc; }
@@ -514,13 +526,13 @@ def export_training_diagrams(out_dir: Path) -> None:
   <line class="axis" x1="150" y1="286" x2="810" y2="286"/>
   <line class="axis" x1="150" y1="128" x2="150" y2="286"/>
 
-  <text class="pct" x="248" y="124">7.7%</text>
+  <text class="pct" x="248" y="124">16.2%</text>
   <rect class="common" x="210" y="136" width="160" height="150" rx="8"/>
-  <rect class="rare" x="210" y="274" width="160" height="12" rx="4"/>
+  <rect class="rare" x="210" y="262" width="160" height="24" rx="4"/>
   <text class="small" x="226" y="166">common steering</text>
   <text class="small" x="228" y="268">rare action rows</text>
   <text class="label" x="185" y="316">Raw train split</text>
-  <text class="small" x="160" y="338">5,060 / 65,648 rows over 3 std</text>
+  <text class="small" x="160" y="338">7,583 / 46,814 rows over 1 std</text>
 
   <text class="pct" x="646" y="124">50%</text>
   <rect class="common" x="590" y="136" width="160" height="150" rx="8"/>
@@ -539,7 +551,7 @@ def export_training_diagrams(out_dir: Path) -> None:
     loss_weight_curve_svg = """\
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-labelledby="title desc">
   <title id="title">Steering loss weight curve</title>
-  <desc id="desc">A line chart showing how absolute steering target increases the weighted MSE loss multiplier from 1.01x near zero steering to 5.84x at full steering.</desc>
+  <desc id="desc">A line chart showing how absolute steering target increases the weighted MSE loss multiplier from 1x near zero steering to 10x at full steering.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L0,6 L8,3 z" fill="#4b5563"/>
@@ -564,23 +576,23 @@ def export_training_diagrams(out_dir: Path) -> None:
   <rect class="bg" x="0" y="0" width="960" height="420" rx="14"/>
   <text class="title" x="44" y="48">Steering Loss Weight</text>
   <text class="subtitle" x="44" y="74">The weighted MSE keeps straight-driving errors visible, then raises the cost of missing larger steering targets.</text>
-  <text class="formula" x="44" y="98">weight = 1 + max(log(abs(target_steer)), 0.01)</text>
+  <text class="formula" x="44" y="98">weight = 10 ** (abs(target_steer) / 127)</text>
 
   <line class="grid" x1="110" y1="320" x2="850" y2="320"/>
-  <line class="grid" x1="110" y1="280" x2="850" y2="280"/>
-  <line class="grid" x1="110" y1="240" x2="850" y2="240"/>
-  <line class="grid" x1="110" y1="200" x2="850" y2="200"/>
-  <line class="grid" x1="110" y1="160" x2="850" y2="160"/>
+  <line class="grid" x1="110" y1="276" x2="850" y2="276"/>
+  <line class="grid" x1="110" y1="232" x2="850" y2="232"/>
+  <line class="grid" x1="110" y1="188" x2="850" y2="188"/>
+  <line class="grid" x1="110" y1="144" x2="850" y2="144"/>
   <line class="grid" x1="110" y1="120" x2="850" y2="120"/>
   <line class="axis" x1="110" y1="320" x2="850" y2="320"/>
   <line class="axis" x1="110" y1="120" x2="110" y2="320"/>
 
   <text class="tick" x="82" y="324">1x</text>
-  <text class="tick" x="82" y="284">2x</text>
-  <text class="tick" x="82" y="244">3x</text>
-  <text class="tick" x="82" y="204">4x</text>
-  <text class="tick" x="82" y="164">5x</text>
-  <text class="tick" x="82" y="124">6x</text>
+  <text class="tick" x="82" y="280">3x</text>
+  <text class="tick" x="82" y="236">5x</text>
+  <text class="tick" x="82" y="192">7x</text>
+  <text class="tick" x="82" y="148">9x</text>
+  <text class="tick" x="78" y="124">10x</text>
   <text class="tick" x="106" y="342">0</text>
   <text class="tick" x="164" y="342">10</text>
   <text class="tick" x="278" y="342">30</text>
@@ -599,22 +611,22 @@ def export_training_diagrams(out_dir: Path) -> None:
 
   <rect class="callout" x="132" y="274" width="158" height="54"/>
   <text class="small" x="146" y="296">0 steering</text>
-  <text class="formula" x="146" y="316">1.01x floor</text>
+  <text class="formula" x="146" y="316">1.00x multiplier</text>
   <path class="arrow" d="M132 306 L116 319"/>
 
   <rect class="callout" x="188" y="212" width="168" height="54"/>
   <text class="small" x="202" y="234">10 steering</text>
-  <text class="formula" x="202" y="254">3.30x multiplier</text>
+  <text class="formula" x="202" y="254">1.20x multiplier</text>
   <path class="arrow" d="M188 242 L170 229"/>
 
   <rect class="callout" x="510" y="154" width="168" height="54"/>
   <text class="small" x="524" y="176">64 steering</text>
-  <text class="formula" x="524" y="196">5.16x multiplier</text>
+  <text class="formula" x="524" y="196">3.19x multiplier</text>
   <path class="arrow" d="M510 184 L486 155"/>
 
   <rect class="callout" x="690" y="104" width="180" height="54"/>
   <text class="small" x="704" y="126">127 steering</text>
-  <text class="formula" x="704" y="146">5.84x multiplier</text>
+  <text class="formula" x="704" y="146">10.00x multiplier</text>
   <path class="arrow" d="M850 150 L850 128"/>
 
   <text class="small" x="278" y="404">The multiplier is applied to squared steering error before taking the batch mean.</text>

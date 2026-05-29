@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" role="img" aria-labelledby="title desc">
   <title id="title">Resampling reduces straight-driving bias</title>
-  <desc id="desc">A bar chart comparing rare high-steering action rows in the raw train split with their share in a balanced training batch.</desc>
+  <desc id="desc">A bar chart comparing one-standard-deviation action outlier rows in the raw train split with their share in a balanced training batch.</desc>
   <defs>
     <style>
       .bg { fill: #f8fafc; }
@@ -24,13 +24,13 @@
   <line class="axis" x1="150" y1="286" x2="810" y2="286"/>
   <line class="axis" x1="150" y1="128" x2="150" y2="286"/>
 
-  <text class="pct" x="248" y="124">7.7%</text>
+  <text class="pct" x="248" y="124">16.2%</text>
   <rect class="common" x="210" y="136" width="160" height="150" rx="8"/>
-  <rect class="rare" x="210" y="274" width="160" height="12" rx="4"/>
+  <rect class="rare" x="210" y="262" width="160" height="24" rx="4"/>
   <text class="small" x="226" y="166">common steering</text>
   <text class="small" x="228" y="268">rare action rows</text>
   <text class="label" x="185" y="316">Raw train split</text>
-  <text class="small" x="160" y="338">5,060 / 65,648 rows over 3 std</text>
+  <text class="small" x="160" y="338">7,583 / 46,814 rows over 1 std</text>
 
   <text class="pct" x="646" y="124">50%</text>
   <rect class="common" x="590" y="136" width="160" height="150" rx="8"/>
