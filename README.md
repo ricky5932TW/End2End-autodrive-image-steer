@@ -7,82 +7,84 @@
 ![Forza Dash UDP](https://img.shields.io/badge/Forza-Dash%20UDP-111827?style=flat-square)
 ![End-to-end steering](https://img.shields.io/badge/End--to--end-image%20steering-2563EB?style=flat-square)
 
-[中文](README.zh-TW.md)
+[繁體中文 README](README.zh-TW.md)
 
-Image-to-steering imitation learning for Forza: collect driving data quickly in a rich game environment, train an end-to-end visual controller, and run it live through a virtual Xbox controller with telemetry feedback.
+This is an image-to-steering imitation learning project that uses Forza as the data collection and evaluation environment. It trains an end-to-end visual steering model from game frames and driving labels, then runs live control through a virtual Xbox controller, Forza Dash UDP telemetry, PID feedback, and optional Kalman filtering.
+
+This README reflects the replanned dataset and the current retraining notebook. The previous README and old assets remain under `old/` as an archive; the current public docs only link to the repository root and `docs/assets/`.
 
 <p align="center">
-  <a href="docs/assets/test-1.mp4">
-    <img src="docs/assets/test-1-preview.gif" alt="Test 1 demo animated preview" width="640">
+  <a href="docs/assets/demo-freeway.mp4">
+    <img src="docs/assets/demo-freeway-preview.gif" alt="Freeway demo animated preview" width="640">
   </a>
 </p>
 
 <p align="center">
-  <a href="docs/assets/test-1.mp4">Open Test 1 demo MP4</a>
+  <a href="docs/assets/demo-freeway.mp4">Open freeway demo MP4</a>
 </p>
 
-## 🎮 Why Games
+## Why Games
 
-Real autonomous-driving data is expensive to collect, hard to label, and difficult to repeat under controlled conditions. Racing games offer a practical academic sandbox: dense visual scenes, changing lighting, track geometry, tire limits, telemetry, and fast resets.
+Real-world autonomous driving data is expensive, hard to label, and difficult to replay under identical conditions. Racing games are a practical research sandbox: rich visual scenes, lighting variation, track geometry, tire limits, telemetry, and fast reset loops.
 
-This project uses racing-game data for supervised end-to-end driving, with faster, safer, and more repeatable data collection while preserving enough control complexity to study image-to-action policies.
+This project uses Forza for supervised end-to-end driving. The goal is not to claim real-road autonomy, but to build a repeatable image-to-action policy pipeline with enough control complexity to be interesting. Sony AI's GT Sophy is a key motivation: Gran Turismo showed that racing games can support high-performance control research. This repo explores a smaller and more practical question: how far can a usable image-to-steering pipeline go when the game is the data engine?
 
-Sony AI's GT Sophy is a strong motivation for taking racing games seriously as research environments: the Nature paper shows deep reinforcement learning agents trained in Gran Turismo can handle non-linear race-car control and multi-agent tactics at champion level. This repo explores a smaller related question: how far can a practical image-steering pipeline go when the game is used as the data engine?
+## Research Context
 
-## 🧭 Research Lineage
-
-| Year | Work | Why it matters here |
+| Year | Work | Connection to this project |
 | --- | --- | --- |
-| 1984 | CMU Navlab | The Navlab program established a long-running line of camera-based autonomous and assisted driving research. |
-| 2004 | DAVE | A small off-road robot used camera input and end-to-end learning to predict steering from human driving. |
-| 2016 | NVIDIA End to End Learning for Self-Driving Cars | A CNN mapped raw front-camera pixels directly to steering, and the authors reported that the network learned useful road features without explicit road-outline labels. |
-| 2022 | Sony AI GT Sophy | Deep RL in Gran Turismo showed that racing games can support high-performance control research in complex, rule-constrained environments. |
-| 2026 | This repo | Forza is used as a fast data-collection and evaluation loop for end-to-end image steering. |
+| 1984 | CMU Navlab | Early camera-based automated and assisted driving research. |
+| 2004 | DAVE | A small off-road robot learned steering from camera inputs and human driving data. |
+| 2016 | NVIDIA End to End Learning for Self-Driving Cars | A CNN predicted steering directly from front-camera raw pixels; this repo follows the same supervised image-to-steering idea. |
+| 2022 | Sony AI GT Sophy | Deep reinforcement learning in Gran Turismo showed that racing games can support complex control research. |
+| 2026 | This repo | Forza is used for data collection, resampled training, visual inspection, and live control evaluation. |
 
-## 🎞️ Demo Clips
+## Demos
 
-These are curated, muted, GitHub-safe clips generated from local recordings. The GIF previews render inline on GitHub; click a preview or MP4 link to open the original clip. Raw videos remain ignored in `media/`.
+These GitHub-safe silent clips are exported from the current recordings in `media/`. GIF previews render directly in the README; click a thumbnail or MP4 link to open the clip.
 
-| Test 1 | Test 2 | Test 3 |
+| Freeway | Mountain | Unpaved |
 | --- | --- | --- |
-| <a href="docs/assets/test-1.mp4"><img src="docs/assets/test-1-preview.gif" alt="Test 1 demo animated preview" width="280"></a> | <a href="docs/assets/test-2.mp4"><img src="docs/assets/test-2-preview.gif" alt="Test 2 demo animated preview" width="280"></a> | <a href="docs/assets/test-3.mp4"><img src="docs/assets/test-3-preview.gif" alt="Test 3 demo animated preview" width="280"></a> |
-| [Open MP4](docs/assets/test-1.mp4) | [Open MP4](docs/assets/test-2.mp4) | [Open MP4](docs/assets/test-3.mp4) |
+| <a href="docs/assets/demo-freeway.mp4"><img src="docs/assets/demo-freeway-preview.gif" alt="Freeway demo animated preview" width="280"></a> | <a href="docs/assets/demo-mountain.mp4"><img src="docs/assets/demo-mountain-preview.gif" alt="Mountain demo animated preview" width="280"></a> | <a href="docs/assets/demo-unpaved.mp4"><img src="docs/assets/demo-unpaved-preview.gif" alt="Unpaved demo animated preview" width="280"></a> |
+| [Open MP4](docs/assets/demo-freeway.mp4) | [Open MP4](docs/assets/demo-mountain.mp4) | [Open MP4](docs/assets/demo-unpaved.mp4) |
 
-## 🧩 System Overview
+| Night | Long range |
+| --- | --- |
+| <a href="docs/assets/demo-night.mp4"><img src="docs/assets/demo-night-preview.gif" alt="Night demo animated preview" width="280"></a> | <a href="docs/assets/demo-longrange.mp4"><img src="docs/assets/demo-longrange-preview.gif" alt="Long range demo animated preview" width="280"></a> |
+| [Open MP4](docs/assets/demo-night.mp4) | [Open MP4](docs/assets/demo-longrange.mp4) |
+
+## Architecture
 
 ```mermaid
 flowchart LR
     A[Forza screen] --> B[Frame capture]
     B --> C[Resize and road crop]
-    D[Forza UDP telemetry] --> E[Telemetry vector]
-    C --> F[MobileNetV3-Small visual encoder]
-    E --> G[Prediction head]
-    F --> G
-    G --> H[Steer, accel, brake]
-    H --> I[PID and optional Kalman steering feedback]
+    C --> D[MobileNetV3-Small visual encoder]
+    E[Forza Dash UDP] --> F[Steering feedback]
+    D --> G[Steer prediction]
+    G --> H[Scale and smoothing]
+    F --> I[PID and optional Kalman]
+    H --> I
     I --> J[Virtual Xbox controller]
     J --> K[Forza]
 ```
 
-The runtime captures the game screen, applies the same crop and ImageNet normalization used in training, fuses visual features with telemetry when the checkpoint expects it, and sends steering commands through `vgamepad`. A live debug window shows the raw frame, model input, Grad-CAM++ overlay, and AI-vs-UDP steering bars.
+At runtime, the app captures the game screen and applies the same resize, road crop, and ImageNet normalization used during training. The current checkpoint is an image-only steering model, with `telemetry_dim=0` in the notebook. Forza UDP is still used for live status, speed and packet checks, and PID feedback from UDP `Steer`.
 
-Runtime steering uses a feedback-control loop. The model predicts a normalized steering target. The virtual Xbox stick has a small deadzone, the game applies its own input response curve, and vehicle dynamics vary across speed, grip, tire slip, and track surface. A small visual model can also jitter or under-correct outside its familiar data distribution. The live loop can scale the model target with `--steer-scale`, smooth the actual stick command, zero tiny commands through the controller deadzone, and use PID feedback against Forza UDP `Steer`. Optional Kalman filtering makes that UDP measurement less noisy before PID correction. PID/Kalman form the control layer between the imitation model and a playable closed-loop controller.
+Core files:
 
-Core implementation:
+- `training_data.py`: session discovery, `dataset.csv` loading, valid moving row filtering, and steering EMA.
+- `load_data.ipynb`: dataset planning, augmentation, balanced sampling, training, loss plots, and CAM checks.
+- `forza_autodrive/model.py`: MobileNetV3-Small visual backbone and steering head.
+- `forza_autodrive/preprocess.py`: capture, resize, crop, and normalization.
+- `forza_autodrive/drive.py`: live inference loop, debug window, hotkeys, and controller output.
+- `forza_autodrive/telemetry.py`: Forza Dash UDP parser.
+- `forza_autodrive/controller.py`: virtual Xbox output, deadzone handling, and smoothing.
+- `forza_autodrive/steering_control.py`: PID correction, rate limiting, and optional scalar Kalman filtering.
 
-- `forza_autodrive/drive.py`: live inference loop, debug window, hotkeys, controller output
-- `forza_autodrive/model.py`: MobileNetV3-Small backbone with a steering head
-- `forza_autodrive/preprocess.py`: capture, resize, crop, normalization
-- `forza_autodrive/telemetry.py`: Forza Dash UDP parser
-- `forza_autodrive/controller.py`: virtual Xbox output, steering deadzone, and command smoothing
-- `forza_autodrive/steering_control.py`: PID correction, correction limiting, rate limiting, and optional scalar Kalman filtering
-- `load_data.ipynb`: training, validation plots, prediction inspection, and Grad-CAM/Score-CAM analysis
+## Training, Augmentation, And Resampling
 
-## 🧪 Training, Augmentation, and Resampling
-
-The training notebook is organized around one practical problem: most collected driving frames are easy straight or low-steering moments, while the model needs enough left turns, right turns, recoveries, and high-curvature examples to stay useful at runtime.
-
-The recorded sessions use racing-line driving and include competitor cars. Cornering labels often favor clipping apexes, using track-side braking or turn-in markers, and following a lead car across repeated laps. This data distribution can produce unstable steering in live runs, including sudden large-angle corrections when the model locks onto an apex, marker, or nearby car.
+The current notebook replans the dataset around `sessions/`, replacing the old data distribution with newer driving clips and changing rare-action sampling so the model sees more corrections, turns, and high-action examples.
 
 <p align="center">
   <img src="docs/assets/training-pipeline.svg" alt="Training pipeline diagram from Forza data collection to steering loss" width="900">
@@ -90,85 +92,74 @@ The recorded sessions use racing-line driving and include competitor cars. Corne
 
 Dataset and preprocessing:
 
-- 8 recorded sessions are loaded from `dataset.csv` files.
-- 96,182 raw rows become 72,942 valid moving rows after `Speed > 0` and `is_valid == 1` filtering.
-- Steering labels are smoothed with an EMA filter using `alpha=0.70`.
-- Data is split 90/10 for training and validation with a fixed seed.
-- Images are resized and cropped to the road-focused box `(0, 75, 320, 122)`, then ImageNet-normalized.
+- 12 image sessions are loaded from `dataset.csv` files under `sessions/`.
+- 52,697 raw rows become 52,015 valid moving rows after `Speed > 0` and `is_valid == 1`.
+- Steering labels use EMA smoothing with `alpha=0.70`; the saved notebook output reports mean `|delta|=0.503`, raw std `13.335`, and filtered std `12.972`.
+- A fixed-seed 90/10 split produces 46,814 train rows and 5,201 validation rows.
+- Images are resized to 320x180, then cropped to the road band `(0,75,320,122)`, producing a `3x47x320` input tensor.
+- The current training path is image-only: `TELEMETRY_COLUMNS=()` and `telemetry_dim=0`.
 
-Training augmentation keeps the visual policy from memorizing one narrow capture distribution. The dataset applies horizontal flips with steering sign inversion, brightness/contrast jitter, small rotation and affine translation/scale, grayscale, invert, posterize, solarize, sharpness, autocontrast, equalize, random erasing, and Gaussian noise.
+Augmentation is meant to keep the visual policy from memorizing one recording distribution. The dataset applies horizontal flip with steering sign inversion, brightness and contrast jitter, small rotation, affine translation and scale, grayscale, invert, posterize, solarize, sharpness, autocontrast, equalize, random erasing, and Gaussian noise.
 
 <p align="center">
-  <img src="docs/assets/resampling-balance.svg" alt="Resampling diagram showing rare action rows increasing from 7.7 percent to 50 percent of a batch" width="780">
+  <img src="docs/assets/resampling-balance.svg" alt="Resampling diagram showing one-standard-deviation action outliers increasing from 16.2 percent to 50 percent of a batch" width="780">
 </p>
 
-The custom `StdOutlierActionBatchSampler` marks rows whose action values are more than `3 std` from the train-set mean. These rows make up 7.7% of the train split (`5,060 / 65,648`). Each 1,024-sample training batch deliberately draws 512 rows from that high-action group, increasing the frequency of left/right corrections and curves compared with uniform sampling.
+`StdOutlierActionBatchSampler` marks a row as an outlier when any action value is more than `1 std` away from the train-set mean. These rows are 16.2% of the train split (`7,583 / 46,814`), but each 1,024-row training batch intentionally draws 512 rows from the outlier group. This keeps turns, corrections, and stronger throttle/brake changes from being drowned out by stable cruising frames.
 
-Loss setup:
-
-The active objective is a steering-only weighted MSE. The notebook currently computes:
+The active objective is steering-only weighted MSE:
 
 ```text
 steer_loss = mean((pred_steer - target_steer)^2 * weight)
-weight = 1 + max(log(abs(target_steer)), 0.01)
+weight = 10 ** (abs(target_steer) / 127)
 ```
 
-The `weight` multiplier is applied to squared steering error. Near-zero `target_steer` values use a floor, so the minimum multiplier is `1.01x` and straight-driving examples still contribute loss. As the absolute steering target increases, mistakes on turns and large corrections become more expensive: `abs(target_steer)=10` is about `3.30x`, `64` is about `5.16x`, and `127` is about `5.84x`.
+The multiplier is `1.00x` near zero steering and rises to `10.00x` at full steering `127`. Compared with the older log-weight approach, this version more directly raises the cost of missing large steering targets.
 
 <p align="center">
-  <img src="docs/assets/loss-weight-curve.svg" alt="Steering loss weight curve showing the multiplier rising from 1.01x near zero steering to 5.84x at full steering" width="780">
+  <img src="docs/assets/loss-weight-curve.svg" alt="Steering loss weight curve showing the multiplier rising from 1x near zero steering to 10x at full steering" width="780">
 </p>
 
-The current checkpoint path trains a MobileNetV3-Small visual backbone with AdamW, warmup, cosine restarts, and early stopping. Train/validation total loss, early stopping, and best-checkpoint selection all use steering loss. `accel=0.5` and `brake=0.0` are placeholder outputs in the current steering-only path because accel and brake behavior are not trained yet; the notebook keeps `accel_loss` / `brake_loss` MSE code in place, but it is currently commented out.
+The model uses a MobileNetV3-Small backbone, AdaptiveAvgPool2d `(4,12)`, a 1024-unit head, LayerNorm, SiLU, Dropout, and a `tanh` steering output scaled to `[-127,127]`. Optimization uses AdamW, warmup, CosineAnnealingWarmRestarts, and early stopping. The saved notebook shows training was manually interrupted around epoch 477; the best visible validation steering loss is `72.8778` at epoch 476, so this README treats the checkpoint as the current state rather than claiming full convergence.
 
-Comparison with NVIDIA DAVE-2 / end-to-end driving:
+`accel=0.5` and `brake=0.0` are placeholder outputs in the steering-only runtime path. Throttle and brake losses are not part of the active objective right now.
 
-| Aspect | Same idea | This repo's implementation |
-| --- | --- | --- |
-| Supervision | Learn steering from pixels and human/driver commands. | Learn steering from Forza screen captures and recorded controller/telemetry labels. |
-| Preprocessing | Use road-focused visual input from the camera frame. | Crop the game frame to the lower road band and normalize with ImageNet statistics. |
-| Augmentation | NVIDIA used recovery-style augmentation with shifted/rotated views and corrected steering labels. | This repo uses image augmentations plus horizontal flip with steering sign inversion. |
-| Imbalance | Curves and recovery cases need extra attention because straight driving dominates raw data. | Rare action rows above `3 std` are boosted from 7.7% of training rows to 50% of each batch. |
-| Vehicle interface | NVIDIA collected real-road steering through CAN bus and used `1/r` turning curvature as the target. | This repo uses Forza data, filtered steering labels, game telemetry, PID/Kalman feedback, and a virtual Xbox controller. |
+## Interpretability Checks
 
-For NVIDIA's original training and architecture figures, see the [paper](https://arxiv.org/abs/1604.07316) and [PDF](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf). The diagrams in this README are generated from this repo's notebook statistics.
+The notebook keeps Grad-CAM/Score-CAM style checks to see whether the model attends to road texture, lane markings, barriers, track boundaries, and corner cues.
 
-## 🔎 Interpretability
-
-The notebook includes Score-CAM/Grad-CAM style checks for the trained steering model.
-
-Final-layer attention is broad and decision-level:
+The final-layer attention is higher level and spatially coarse:
 
 <p align="center">
   <img src="docs/assets/scorecam-final-layer.jpg" alt="Final-layer Score-CAM montage" width="900">
 </p>
 
-Shallow-layer attention is more local and repeatedly lights up road texture, lane markings, guardrails, and track boundaries:
+The shallow-layer attention is more local and repeatedly lands around road markings and boundaries:
 
 <p align="center">
   <img src="docs/assets/scorecam-shallow-layer.jpg" alt="Shallow-layer Score-CAM montage highlighting road markings" width="900">
 </p>
 
-This qualitatively echoes the NVIDIA end-to-end driving paper: with steering supervision alone, a CNN can learn internal road features from driving data. In this repo, the observation is a sanity check for what the Forza model appears to attend to.
+This mirrors an observation from NVIDIA's end-to-end driving paper: even with steering supervision only, a CNN may learn road-relevant internal features. Here, CAM is used as a qualitative sanity check.
 
-## 💻 Quick Start
+## Quick Start
 
 ### 1. Runtime setup
 
-Install the runtime dependencies in your Python environment.
+Install runtime dependencies first.
 
 > [!NOTE]
-> Choose the PyTorch wheel for your local CUDA or CPU setup; the command below is the simple pip form used as a starting point.
+> Choose the PyTorch wheel that matches your CUDA or CPU environment. The command below is a simplified pip starting point.
 
 ```powershell
 py -m pip install torch torchvision numpy pillow opencv-python dxcam keyboard vgamepad pytorch-grad-cam
 ```
 
-For live control on Windows, install or repair the ViGEmBus driver so `vgamepad` can create a virtual Xbox 360 controller.
+Windows live control requires the ViGEmBus driver. `vgamepad` needs it to create a virtual Xbox 360 controller.
 
-### 2. Place model weights
+### 2. Place the checkpoint
 
-The checkpoint is intentionally ignored because it is larger than GitHub's normal file limit. Put your local checkpoint at:
+The checkpoint is large and should be published through Git LFS. If it is missing after clone, make sure Git LFS is installed and run `git lfs pull`. Runtime reads:
 
 ```text
 best_model.pth
@@ -176,7 +167,7 @@ best_model.pth
 
 ### 3. Enable Forza telemetry
 
-In Forza, enable Data Out with Dash format and send UDP packets to this machine:
+In Forza, enable Data Out, use Dash format, and send UDP packets to this PC:
 
 ```text
 Host: 127.0.0.1 or your PC IP
@@ -184,9 +175,9 @@ Port: 9999
 Format: Dash
 ```
 
-### 4. Dry-run first
+### 4. Dry run first
 
-This runs inference and the debug window without touching the virtual controller.
+This runs inference and the debug window without controlling the virtual gamepad.
 
 ```powershell
 py -m forza_autodrive.drive --model best_model.pth --no-controller --debug-window
@@ -195,7 +186,7 @@ py -m forza_autodrive.drive --model best_model.pth --no-controller --debug-windo
 ### 5. Live driving
 
 > [!CAUTION]
-> Before arming live control, verify telemetry is updating, the Forza window is focused, the virtual controller state is understood, and `F8` emergency stop works.
+> Before enabling live control, confirm telemetry is updating, the Forza window focus is correct, the virtual controller state is expected, and the `F8` emergency stop works.
 
 ```powershell
 py -m forza_autodrive.drive --model best_model.pth --start-armed
@@ -203,21 +194,21 @@ py -m forza_autodrive.drive --model best_model.pth --start-armed
 
 Hotkeys:
 
-- `F9`: arm or disarm AI control
+- `F9`: arm/disarm AI control
 - `F8`: emergency stop
 - `Ctrl+C`: exit and reset controller
 
-Useful options:
+Common PID/Kalman steering feedback options:
 
 ```powershell
-py -m forza_autodrive.drive --steer-scale 2.0 --steer-feedback pid --steer-kalman --fps 30
+py -m forza_autodrive.drive --model best_model.pth --steer-scale 2.0 --steer-feedback pid --steer-kalman --fps 30
 ```
 
-Steering feedback tuning starts with `--steer-scale`, because the model target and in-game stick response have a nonlinear mapping. If the car ignores small corrections, scale may be too low or the command may be inside the gamepad/game deadzone. If it oscillates, lower `--steer-scale`, lower PID gains, reduce `--steer-pid-correction-limit`, or enable `--steer-kalman` so PID follows a less noisy UDP steering measurement. `--steer-smoothing` and `--steer-pid-correction-rate-limit` are useful when the model is visually correct on average while too twitchy frame to frame.
+Start tuning with `--steer-scale`. If small corrections do not register, the scale may be too low or the command may still be inside the controller/game deadzone. If the car oscillates, reduce `--steer-scale`, lower the PID gains, lower `--steer-pid-correction-limit`, or enable `--steer-kalman` so PID sees a steadier UDP steering measurement.
 
-## 📦 README Asset Workflow
+## README Asset Workflow
 
-The raw recordings in `media/` and model checkpoints are intentionally ignored. Publish only compact README assets:
+Raw recordings in `media/`, notebooks, README media, and model checkpoints are large or binary artifacts and should be published through Git LFS. To regenerate the small README assets:
 
 ```powershell
 py -m pip install -r requirements-readme-assets.txt
@@ -226,15 +217,14 @@ py tools/export_readme_assets.py
 
 The exporter:
 
-- cuts short muted clips from `media/`
-- trims the selected segment tails and avoids the final second of every source recording
-- targets MP4 files under 10 MiB
-- exports poster JPGs under 500 KiB
-- extracts compact Score-CAM montages from `load_data.ipynb`
+- Cuts `demo-freeway`, `demo-mountain`, `demo-unpaved`, `demo-night`, and `demo-longrange` from the current `media/` recordings.
+- Writes GitHub-safe MP4 clips, GIF previews, and poster JPGs.
+- Extracts compact CAM montages from `load_data.ipynb`.
+- Generates the updated training pipeline, resampling balance, and loss weight curve SVGs.
 
-GitHub warns above 50 MiB and blocks files above 100 MiB in regular Git repositories, so `media/` and `*.pth` stay local unless they are published through Releases or Git LFS.
+GitHub warns on normal Git files above 50 MiB and blocks files above 100 MiB, so `media/`, `*.pth`, `*.ipynb`, videos, GIFs, and JPGs should stay under Git LFS tracking rules.
 
-## 📚 References
+## References
 
 - [CMU Navlab](https://www.cs.cmu.edu/afs/cs/project/alv/www/)
 - [DAVE: Autonomous Off-Road Vehicle Control using End-to-End Learning](https://cs.nyu.edu/~yann/research/dave/)

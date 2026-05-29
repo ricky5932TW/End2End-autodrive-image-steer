@@ -25,16 +25,16 @@
 
   <rect class="box" x="40" y="136" width="135" height="126"/>
   <text class="label" x="60" y="166">Collect</text>
-      <text class="small" x="60" y="194">12 sessions</text>
-      <text class="small" x="60" y="216">screen + UDP</text>
-      <text class="metric" x="60" y="240">52,697 rows</text>
+  <text class="small" x="60" y="194">8 sessions</text>
+  <text class="small" x="60" y="216">screen + UDP</text>
+  <text class="metric" x="60" y="240">96,182 rows</text>
 
   <path class="arrow" d="M180 199 H218"/>
   <rect class="box" x="225" y="136" width="135" height="126"/>
   <text class="label" x="245" y="166">Filter</text>
-      <text class="small" x="245" y="194">Speed &gt; 0</text>
-      <text class="small" x="245" y="216">valid rows only</text>
-      <text class="metric" x="245" y="240">52,015 rows</text>
+  <text class="small" x="245" y="194">Speed &gt; 0</text>
+  <text class="small" x="245" y="216">valid rows only</text>
+  <text class="metric" x="245" y="240">72,942 rows</text>
 
   <path class="arrow" d="M365 199 H403"/>
   <rect class="box" x="410" y="136" width="135" height="126"/>
@@ -53,9 +53,9 @@
   <path class="arrow" d="M735 199 H773"/>
   <rect class="box-warm" x="780" y="136" width="135" height="126"/>
   <text class="label" x="800" y="166">Resample</text>
-  <text class="small" x="800" y="194">&gt; 1 std actions</text>
+  <text class="small" x="800" y="194">&gt; 3 std actions</text>
   <text class="small" x="800" y="216">512 / 1024 batch</text>
-  <text class="metric" x="800" y="240">16.2% boosted</text>
+  <text class="metric" x="800" y="240">rare rows boosted</text>
 
   <path class="arrow" d="M920 199 H958"/>
   <rect class="box" x="965" y="136" width="115" height="126"/>
@@ -66,5 +66,5 @@
 
   <rect class="box" x="225" y="306" width="690" height="58"/>
   <text class="small" x="248" y="331">90/10 train-validation split, ImageNet normalization, and early stopping.</text>
-  <text class="small" x="248" y="351">Image-only steering checkpoint is saved as best_model.pth.</text>
+  <text class="small" x="248" y="351">Best checkpoint is saved as best_model.pth.</text>
 </svg>
