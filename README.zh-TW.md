@@ -11,7 +11,7 @@
 
 這是一個以 Forza 為資料收集與測試環境的 image-to-steering imitation learning 專案。它用遊戲畫面與駕駛資料訓練端到端方向盤模型，再透過虛擬 Xbox 控制器、Forza Dash UDP telemetry、PID 與可選 Kalman 濾波，在遊戲中做即時閉迴路控制。
 
-這版 README 依照重新規劃後的資料集與重新訓練 notebook 改寫。舊版文件與舊素材保留在 `old/` 作為封存；目前公開文件只連到根目錄與 `docs/assets/`。
+目前模型聚焦在方向盤控制：輸入是裁切後的賽道畫面，輸出是 steering target；油門與煞車先用固定 placeholder，讓實驗重點集中在視覺轉向、資料平衡與閉迴路控制。
 
 <p align="center">
   <a href="docs/assets/demo-freeway.mp4">
@@ -41,7 +41,7 @@
 
 ## 示範片段
 
-以下是從目前 `media/` 內新錄影剪出的 GitHub-safe 無聲短片。GIF 預覽可直接在 README 顯示；點縮圖或 MP4 連結可開啟原始短片。
+以下是實際測試錄影剪出的無聲片段。GIF 可快速預覽；點縮圖或 MP4 連結可看完整片段。
 
 | Freeway | Mountain | Unpaved |
 | --- | --- | --- |
@@ -120,7 +120,7 @@ weight = 10 ** (abs(target_steer) / 127)
   <img src="docs/assets/loss-weight-curve.svg" alt="Steering loss weight curve showing the multiplier rising from 1x near zero steering to 10x at full steering" width="780">
 </p>
 
-模型使用 MobileNetV3-Small backbone、AdaptiveAvgPool2d `(4,12)`、1024 hidden head、LayerNorm、SiLU、Dropout，最後以 `tanh` 輸出 `[-127,127]` steering。Optimizer 使用 AdamW、warmup、CosineAnnealingWarmRestarts 與 early stopping。Notebook 顯示訓練在 epoch 477 附近被手動中斷；最後可見較佳 validation steer loss 是 epoch 476 的 `72.8778`，因此這裡只把它視為目前 checkpoint 狀態，不宣稱完整收斂。
+模型使用 MobileNetV3-Small backbone、AdaptiveAvgPool2d `(4,12)`、1024 hidden head、LayerNorm、SiLU、Dropout，最後以 `tanh` 輸出 `[-127,127]` steering。Optimizer 使用 AdamW、warmup、CosineAnnealingWarmRestarts 與 early stopping。Notebook 顯示訓練在 epoch 477 附近被手動中斷；最後可見較佳 validation steer loss 是 epoch 476 的 `72.8778`，所以目前 checkpoint 應視為一次可用的實驗結果，而不是完整收斂的最終模型。
 
 `accel=0.5`、`brake=0.0` 是 steering-only runtime path 的 placeholder output；目前沒有把油門/煞車 loss 放進 active objective。
 
@@ -159,7 +159,7 @@ Windows live control 需要安裝或修復 ViGEmBus driver，`vgamepad` 才能�
 
 ### 2. 放置模型權重
 
-Checkpoint 檔案大，應透過 Git LFS 發布；如果 clone 後沒有權重檔，請確認已安裝 Git LFS 並執行 `git lfs pull`。Runtime 預設會讀取：
+Runtime 預設會讀取根目錄的模型權重：
 
 ```text
 best_model.pth
@@ -206,24 +206,6 @@ py -m forza_autodrive.drive --model best_model.pth --steer-scale 2.0 --steer-fee
 
 調參通常先從 `--steer-scale` 開始。如果小修正吃不到，可能是 scale 太低或仍在 controller/game deadzone 裡；如果車身左右震盪，可以降低 `--steer-scale`、降低 PID gains、降低 `--steer-pid-correction-limit`，或開 `--steer-kalman` 讓 PID 看到較穩的 UDP steering measurement。
 
-## README Asset Workflow
-
-原始錄影 `media/`、notebook、README 素材與模型 checkpoint 都屬於大型/二進位 artifact，應透過 Git LFS 發布。要重新產生 README 內的小素材，使用：
-
-```powershell
-py -m pip install -r requirements-readme-assets.txt
-py tools/export_readme_assets.py
-```
-
-Exporter 會：
-
-- 從目前 `media/` 剪出 `demo-freeway`、`demo-mountain`、`demo-unpaved`、`demo-night`、`demo-longrange`。
-- 輸出 GitHub-safe MP4、GIF preview 與 poster JPG。
-- 從 `load_data.ipynb` 擷取 compact CAM montages。
-- 產生新版 training pipeline、resampling balance 與 loss weight curve SVG。
-
-GitHub 一般 Git repo 中超過 50 MiB 會警告，超過 100 MiB 會被阻擋，所以 `media/`、`*.pth`、`*.ipynb`、影片、GIF 與 JPG 都應維持在 Git LFS track 規則下。
-
 ## References
 
 - [CMU Navlab](https://www.cs.cmu.edu/afs/cs/project/alv/www/)
@@ -232,4 +214,3 @@ GitHub 一般 Git repo 中超過 50 MiB 會警告，超過 100 MiB 會被阻擋�
 - [NVIDIA paper PDF](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf)
 - [Sony AI GT Sophy announcement](https://ai.sony/news/sonyai009)
 - [Nature: Outracing champion Gran Turismo drivers with deep reinforcement learning](https://www.nature.com/articles/s41586-021-04357-7)
-- [GitHub Docs: About large files on GitHub](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)
